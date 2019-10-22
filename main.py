@@ -66,12 +66,12 @@ test_loader = get_dataloader(dataset_name, 'test', batch_size = 100)
 # Load Models ##
 ################
 quantized_net = resnet20_cifar()
-# quantized_net = resnet18() # For quantization of ResNet18 using ImageNet
+#quantized_net = resnet18() # For quantization of ResNet18 using ImageNet
 pretrain_param = torch.load(pretrain_path)
 quantized_net.load_state_dict(pretrain_param)
 
 original_net = resnet20_cifar()
-# original_net = resnet18() # For quantization of ResNet18 using ImageNet
+#original_net = resnet18() # For quantization of ResNet18 using ImageNet
 original_net.load_state_dict(pretrain_param)
 
 if use_cuda:
