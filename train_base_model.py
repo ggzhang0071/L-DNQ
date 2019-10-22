@@ -1,9 +1,8 @@
-'''Train CIFAR10 with PyTorch.'''
-
+from __future__ import print_function
+"""Train CIFAR10 with PyTorch."""
 """
 This code is forked and modified from 'https://github.com/kuangliu/pytorch-cifar'. Thanks to its contribution.
 """
-from __future__ import print_function
 
 import torch
 import torch.nn as nn
