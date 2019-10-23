@@ -2,7 +2,9 @@
 This code implements supervised LDNQ in a cascade way
 """ 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
+import torch
+
+os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(i) for i in range(torch.cuda.device_count())])
 from models_CIFAR10.resnet_layer_input import *
 from models_ImageNet.resnet_layer_input import *
 from utils.hessian import generate_hessian
@@ -11,7 +13,6 @@ from utils.dataset import get_dataloader
 from utils.train import cascade_soft_update, validate
 from utils.quantization import ADMM_quantization
 
-import torch
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
