@@ -4,11 +4,11 @@ cl=`git rev-parse HEAD|cut -c1-7`
 name='L-DNQ'
 cd $TOP
 
-cmd="python3 train_base_model.py"
+train_cmd="python3 train_base_model.py"
 
 rm -fr Results
 rm -fr *.log
-
-$cmd 2>&1 |tee $name${cl}_$timestamp.log
-$cmd 2>&1 |tee $name_${cl}_$timestamp.log
+$train_cmd 2>&1 |tee ${name}_train_${cl}_$timestamp.log
+quantize_train="python3 main.py"
+$quantize_train 2>&1 |tee ${name}_quantize_${cl}_$timestamp.log
 

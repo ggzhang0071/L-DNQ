@@ -30,7 +30,7 @@ args = parser.parse_args()
 use_cuda = torch.cuda.is_available()
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-model_name = 'resnet56'
+model_name = 'ResNet20'
 
 # Data
 print('==> Preparing data..')
@@ -136,7 +136,7 @@ def test(epoch):
         best_acc = acc
         if not os.path.exists('./%s' %model_name):
             os.makedirs('./%s' %model_name)
-        torch.save(net.module.state_dict(), './%s/%s_pretrain.p' %(model_name, model_name))
+        torch.save(net.module.state_dict(), './%s/%s_pretrain.pth' %(model_name, model_name))
 
 
 for epoch in range(start_epoch, start_epoch+200):
