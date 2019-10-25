@@ -14,7 +14,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 import argparse
 
 from models_CIFAR10.resnet import resnet20_cifar
