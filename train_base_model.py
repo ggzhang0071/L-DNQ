@@ -1,4 +1,4 @@
-from __future__ import print_function
+#from __future__ import print_function
 """Train CIFAR10 with PyTorch."""
 """
 This code is forked and modified from 'https://github.com/kuangliu/pytorch-cifar'. Thanks to its contribution.
@@ -12,7 +12,7 @@ import torch.backends.cudnn as cudnn
 
 import torchvision
 import torchvision.transforms as transforms
-
+import numpy as np
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 import argparse
@@ -22,59 +22,9 @@ from torch.autograd import Variable
 from utils.train import progress_bar
 from utils.dataset import get_dataloader
 
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
-args = parser.parse_args()
-
-use_cuda = torch.cuda.is_available()
-best_acc = 0  # best test accuracy
-start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-model_name = 'ResNet20'
-
-# Data
-print('==> Preparing data..')
-
-trainloader = get_dataloader('CIFAR10', 'train', 128)
-testloader = get_dataloader('CIFAR10', 'test', 100)
-
-# Model
-if args.resume:
-    # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
-    net = checkpoint['net']
-    best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
-else:
-    print('==> Building model..')
-    # net = VGG(model_name)
-    # net = ResNet18()
-    # net = PreActResNet18()
-    # net = GoogLeNet()
-    # net = DenseNet121()
-    # net = ResNeXt29_2x64d()
-    # net = MobileNet()
-    # net = MobileNetV2()
-    # net = DPN92()
-    # net = ShuffleNetG2()
-    # net = SENet18()
-    # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
-    # net = resnet32_cifar()
-    # net = resnet56_cifar()
-    net = resnet20_cifar()
-
-if use_cuda:
-    net.cuda()
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-    cudnn.benchmark = True
-
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
 # Training
-def train(epoch):
+def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
     print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
@@ -98,12 +48,12 @@ def train(epoch):
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
-def test(epoch):
-    global best_acc
+def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
     net.eval()
     test_loss = 0
     correct = 0
     total = 0
+    Acc=[]
     for batch_idx, (inputs, targets) in enumerate(testloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
@@ -120,7 +70,8 @@ def test(epoch):
 
         progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))
-
+        return Acc.append(100.*float(correct)/total) 
+    
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
@@ -138,7 +89,73 @@ def test(epoch):
             os.makedirs('./%s' %model_name)
         torch.save(net.module.state_dict(), './%s/%s_pretrain.pth' %(model_name, model_name))
 
+def ResNet(dataset,params,lr,savepath):
+    resume=True
+    use_cuda = torch.cuda.is_available()
+    best_acc = 0  # best test accuracy
+    start_epoch = 0  # start from epoch 0 or last checkpoint epoch
+    model_name = 'ResNet20'
 
-for epoch in range(start_epoch, start_epoch+200):
-    train(epoch)
-    test(epoch)
+    # Data
+    print('==> Preparing data..')
+    Batch_size=params[0]
+    trainloader = get_dataloader(dataset, 'train', Batch_size)
+    testloader = get_dataloader(dataset, 'test', 100)
+
+    # Model
+    if resume:
+        # Load checkpoint.
+        print('==> Resuming from checkpoint..')
+        assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
+        checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
+        net = checkpoint['net']
+        best_acc = checkpoint['acc']
+        start_epoch = checkpoint['epoch']
+    else:
+        print('==> Building model..')
+        # net = VGG(model_name)
+        # net = ResNet18()
+        # net = PreActResNet18()
+        # net = GoogLeNet()
+        # net = DenseNet121()
+        # net = ResNeXt29_2x64d()
+        # net = MobileNet()
+        # net = MobileNetV2()
+        # net = DPN92()
+        # net = ShuffleNetG2()
+        # net = SENet18()
+        # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
+        # net = resnet32_cifar()
+        # net = resnet56_cifar()
+        net = resnet20_cifar(params)
+
+    if use_cuda:
+        net.cuda()
+        net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+        cudnn.benchmark = True
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+    for epoch in range(start_epoch, start_epoch+200):
+        train(trainloader,net,epoch,optimizer,criterion,use_cuda)
+        Acc=test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name)
+    return Acc
+
+if __name__=="__main__":   
+    parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
+    parser.add_argument('--dataset',default='CIFAR10',type=str, help='dataset to train')
+    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+    parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
+    parser.add_argument('--savepath', type=str,required=False, default='../Results/',
+                    help='Path to save results')
+    args = parser.parse_args()
+    alpha=0.4
+    params=[np.random.randint(300*0.4,300),alpha]
+    Width=[]
+    tmpOld=np.random.randint(3072*alpha,3072)
+    Numlayers=3
+    for k in range(Numlayers):
+        tmpNew=np.random.randint(tmpOld*alpha,tmpOld)
+        tmpOld=tmpNew
+        Width.append(tmpNew)
+    ResNet(args.dataset,Width,args.lr,args.savepath)
