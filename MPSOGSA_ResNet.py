@@ -19,7 +19,7 @@ def euclid_dist(x,y):
         temp += (i-j)**2
         final = np.sqrt(temp)
     return final
-def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,savepath):
+def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,resume,savepath):
     np.seterr(divide='ignore', invalid='ignore')
     # %config InlineBackend.figure_format = 'retina'
     c1 = 2
@@ -45,17 +45,7 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,savepath):
     particles = []
     for i in range(num_particles):
         p = Particle()
-        alpha=np.random.uniform(0.5,0.9)
-        p.params=[np.random.randint(300*0.4,300),alpha]
-        Width=[]
-        tmpOld=np.random.randint(3072*alpha,3072)
-        Numlayers=3
-        for k in range(Numlayers):
-            tmpNew=np.random.randint(tmpOld*alpha,tmpOld)
-            tmpOld=tmpNew
-            Width.append(tmpNew)
-       
-
+        p.params=[np.random.randint(300*0.4,300),np.random.uniform(0.5,0.9)]
         p.fitness = rnd.rand()
         p.velocity = 0.3*rnd.randn(dim)
         p.res_force = rnd.rand()
@@ -78,37 +68,32 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,savepath):
             y_train = 0
             if p.params[0]<100 or p.params[0]>300:
                 p.params[0]=np.random.randint(300*0.4,300)
-            elif p.params[1]<0.4 or p.params[1]>0.9:
+            if p.params[1]<0.4 or p.params[1]>0.9:
                 p.params[2]=np.random.uniform(0.4,0.9)
-            Width=[]
-            tmpOld=np.random.randint(3072*alpha,3072)
-            for k in range(Numlayers):
-                tmpNew=np.random.randint(tmpOld*alpha,tmpOld)
-                tmpOld=tmpNew
-                Width.append(tmpNew)    
-            print('hidden size, number of layers, and scale are:',p.params)
-            fitness = ResNetBasics.ResNet(dataset,Width,lr,savepath)
+                
+            print('hidden size, and contraction coefficients are:',p.params[0],p.params[1])
+            [fitness,hidden0] = ResNetBasics.ResNet(dataset,p.params,lr,resume,savepath)
             hiddensize=int(p.params[0])
-            numlayers=int(p.params[1])
+            
             
     #         fitness = fitness/X.shape[0]
             OldFitness=fitness
             current_fitness[cf] = fitness
             cf += 1
             if gbest_score > fitness and OldBest>fitness:
-                """hiddenState=np.array(hidden0.view(numlayers,hiddensize).tolist())
+                hiddenState=np.array(hidden0.view(numlayers,hiddensize).tolist())
                 rp = RecurrencePlot()
                 X_rp = rp.fit_transform(hiddenState)
                 plt.figure(figsize=(6, 6))
                 plt.imshow(X_rp[0], cmap='binary', origin='lower')
             #         plt.title('Recurrence Plot', fontsize=14)
-                plt.savefig(savepath+'/RecurrencePlots/'+'RecurrencePlots_'+dataset+str(round(fitness,NumSave))+'_'
-                                +str(numlayers)+'_'+str(hiddensize)+'_'
+                plt.savefig(savepath+'RecurrencePlots/'+'RecurrencePlots_'+dataset+str(round(fitness,NumSave))
+                             +'_'+str(hiddensize)+'_'
                                        +'.png',dpi=600)
                 plt.show()
 
-                
-                weightsName='reservoir.weight_hh'
+               
+                """weightsName='reservoir.weight_hh'
                 for name, param in named_parameters:
         #             print(name,param)
                     if name.startswith(weightsName):
@@ -171,22 +156,25 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,savepath):
 
 parser = argparse.ArgumentParser(description='PyTorch Time series forecasting')
 
-parser.add_argument('--dataset',default='CIFAR10',type=str, help='dataset to train')
+parser.add_argument('--dataset',default='CIFAR10',type=str, help='Dataset to train')
 
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+parser.add_argument('--lr', default=0.1, type=float, help='Learning rate')
 
-parser.add_argument('--max_iters', type=int,default=50, help='')
+parser.add_argument('--max_iters', type=int,default=50, help='Max iterations')
 
-parser.add_argument('--num_particles', type=int, default=30, help='')
+parser.add_argument('--num_particles', type=int, default=30, help='Number of particles')
 
 parser.add_argument('--NumSave', type=int, default=8, help='Number to save')
 
-parser.add_argument('--savepath', type=str,required=False, default='../Results/',
+parser.add_argument('--resume', action='store_true',default=False, help='Resume from checkpoint')
+
+parser.add_argument('--savepath', type=str, required=False, default='./Results/',
                     help='Path to save results')
 
 args = parser.parse_args()
 
 if __name__ =="__main__":
+    
     torch.cuda.is_available()
-    PSOGSA_ResNet(args.dataset,args.max_iters,args.num_particles,args.NumSave,args.lr,args.savepath)
+    PSOGSA_ResNet(args.dataset,args.max_iters,args.num_particles,args.NumSave,args.lr,args.resume,args.savepath)
 

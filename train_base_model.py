@@ -45,7 +45,7 @@ def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        progress_bar(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
@@ -68,7 +68,7 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        progress_bar(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))
         return Acc.append(100.*float(correct)/total) 
     
@@ -89,8 +89,7 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
             os.makedirs('./%s' %model_name)
         torch.save(net.module.state_dict(), './%s/%s_pretrain.pth' %(model_name, model_name))
 
-def ResNet(dataset,params,lr,savepath):
-    resume=True
+def ResNet(dataset,params,lr,resume,savepath):
     use_cuda = torch.cuda.is_available()
     best_acc = 0  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
@@ -98,7 +97,7 @@ def ResNet(dataset,params,lr,savepath):
 
     # Data
     print('==> Preparing data..')
-    Batch_size=params[0]
+    Batch_size=int(params[0])
     trainloader = get_dataloader(dataset, 'train', Batch_size)
     testloader = get_dataloader(dataset, 'test', 100)
 
@@ -127,7 +126,7 @@ def ResNet(dataset,params,lr,savepath):
         # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
         # net = resnet32_cifar()
         # net = resnet56_cifar()
-        net = resnet20_cifar(params)
+        net = resnet20_cifar(params[1])
 
     if use_cuda:
         net.cuda()
@@ -139,23 +138,16 @@ def ResNet(dataset,params,lr,savepath):
     for epoch in range(start_epoch, start_epoch+200):
         train(trainloader,net,epoch,optimizer,criterion,use_cuda)
         Acc=test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name)
-    return Acc
+    return Acc, net.module.fc.weight
 
 if __name__=="__main__":   
     parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
     parser.add_argument('--dataset',default='CIFAR10',type=str, help='dataset to train')
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-    parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
-    parser.add_argument('--savepath', type=str,required=False, default='../Results/',
+    parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
+    parser.add_argument('--savepath', type=str,required=False, default='./Results/',
                     help='Path to save results')
     args = parser.parse_args()
-    alpha=0.4
-    params=[np.random.randint(300*0.4,300),alpha]
-    Width=[]
-    tmpOld=np.random.randint(3072*alpha,3072)
-    Numlayers=3
-    for k in range(Numlayers):
-        tmpNew=np.random.randint(tmpOld*alpha,tmpOld)
-        tmpOld=tmpNew
-        Width.append(tmpNew)
-    ResNet(args.dataset,Width,args.lr,args.savepath)
+    params=[np.random.randint(300*0.4,300),np.random.uniform(0.5,0.9)]
+
+    ResNet(args.dataset,params,args.lr,args.resume,args.savepath)
