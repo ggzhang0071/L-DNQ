@@ -70,7 +70,7 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
 
         progress_bar(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))
-        return Acc.append(100.*float(correct)/total) 
+        Acc.append(100.*float(correct)/total) 
     
     # Save checkpoint.
     acc = 100.*correct/total
@@ -88,6 +88,7 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         if not os.path.exists('./%s' %model_name):
             os.makedirs('./%s' %model_name)
         torch.save(net.module.state_dict(), './%s/%s_pretrain.pth' %(model_name, model_name))
+    return Acc[-1]
 
 def ResNet(dataset,params,lr,resume,savepath):
     use_cuda = torch.cuda.is_available()

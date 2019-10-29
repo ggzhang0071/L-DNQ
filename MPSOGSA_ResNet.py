@@ -43,9 +43,11 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,resume,savepath):
 
     #all particle initialized
     particles = []
+    Max=400
     for i in range(num_particles):
         p = Particle()
-        p.params=[np.random.randint(300*0.4,300),np.random.uniform(0.5,0.9)]
+        p.params=[np.random.randint(Max*0.4,Max),np.random.uniform(0.5,0.9)]
+
         p.fitness = rnd.rand()
         p.velocity = 0.3*rnd.randn(dim)
         p.res_force = rnd.rand()
@@ -66,11 +68,12 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,resume,savepath):
         for p in particles:
             fitness = 0
             y_train = 0
-            if p.params[0]<100 or p.params[0]>300:
-                p.params[0]=np.random.randint(300*0.4,300)
-            if p.params[1]<0.4 or p.params[1]>0.9:
-                p.params[2]=np.random.uniform(0.4,0.9)
+            if p.params[0]<150 or p.params[0]>Max:
+                p.params[0]=np.random.randint(Max*0.4,Max)
                 
+            if p.params[1]<0.4 or p.params[1]>0.9:
+                p.params[1]=np.random.uniform(0.5,0.9)
+  
             print('hidden size, and contraction coefficients are:',p.params[0],p.params[1])
             [fitness,hidden0] = ResNetBasics.ResNet(dataset,p.params,lr,resume,savepath)
             hiddensize=int(p.params[0])
@@ -81,7 +84,7 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,NumSave,lr,resume,savepath):
             current_fitness[cf] = fitness
             cf += 1
             if gbest_score > fitness and OldBest>fitness:
-                hiddenState=np.array(hidden0.view(numlayers,hiddensize).tolist())
+                hiddenState=hidden0.cpu().detach().numpy()
                 rp = RecurrencePlot()
                 X_rp = rp.fit_transform(hiddenState)
                 plt.figure(figsize=(6, 6))
@@ -166,7 +169,7 @@ parser.add_argument('--num_particles', type=int, default=30, help='Number of par
 
 parser.add_argument('--NumSave', type=int, default=8, help='Number to save')
 
-parser.add_argument('--resume', action='store_true',default=False, help='Resume from checkpoint')
+parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
 
 parser.add_argument('--savepath', type=str, required=False, default='./Results/',
                     help='Path to save results')
