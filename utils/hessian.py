@@ -180,7 +180,7 @@ def generate_hessian(net, trainloader, layer_name, layer_type, n_batch_used = 10
 
 if __name__ == '__main__':
     import os
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
     from models_ImageNet.resnet_layer_input import resnet18 as NetWork
     from utils.dataset import get_dataloader
 

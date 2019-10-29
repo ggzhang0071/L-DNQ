@@ -11,6 +11,7 @@ This code is forked and modified from 'https://github.com/junyuseu/pytorch-cifar
 import torch
 import torch.nn as nn
 import math
+import numpy as np
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -265,24 +266,35 @@ class PreAct_ResNet_Cifar(nn.Module):
 
         return x
 
-
-
-def resnet20_cifar(Width,**kwargs):
+def ContractionLayerCoefficients(alpha,Numlayers):
+    Width=[]
+    tmpOld=np.random.randint(3072*alpha,3072)
+    for k in range(Numlayers):
+        tmpNew=np.random.randint(tmpOld*alpha,tmpOld)
+        tmpOld=tmpNew
+        Width.append(tmpNew)
+    return Width
+        
+def resnet20_cifar(alpha,**kwargs):
+    Width=ContractionLayerCoefficients(alpha,3)
     model = ResNet_Cifar(BasicBlock, Width,[3, 3, 3], **kwargs)
     return model
 
 
 def resnet32_cifar(**kwargs):
+    Width=ContractionLayerCoefficients(params[1],3)
     model = ResNet_Cifar(BasicBlock, Width,[5, 5, 5], **kwargs)
     return model
 
 
 def resnet44_cifar(**kwargs):
+    ContractionLayerCoefficients(params[1],3)
     model = ResNet_Cifar(BasicBlock, Width, [7, 7, 7], **kwargs)
     return model
 
 
 def resnet56_cifar(**kwargs):
+    ContractionLayerCoefficients(params[1],3)
     model = ResNet_Cifar(BasicBlock, Width, [9, 9, 9], **kwargs)
     return model
 
