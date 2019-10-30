@@ -21,6 +21,7 @@ from models_CIFAR10.resnet import resnet20_cifar
 from torch.autograd import Variable
 from utils.train import progress_bar
 from utils.dataset import get_dataloader
+import SaveDataCsv as SV
 
 
 # Training
@@ -136,19 +137,34 @@ def ResNet(dataset,params,lr,resume,savepath):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
-    for epoch in range(start_epoch, start_epoch+200):
+    AccConvergence=[]
+    for epoch in range(start_epoch, start_epoch+10):
         train(trainloader,net,epoch,optimizer,criterion,use_cuda)
         Acc=test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name)
+        AccConvergence.append(Acc)
+    
+    FileName=dataset+'AccConvergenceChanges.csv'
+    newdata=[params,AccConvergence]
+    PathFileName=os.path.join(savepath,FileName)
+    SV.SaveDataCsv(PathFileName,newdata)
     return Acc, net.module.fc.weight
 
 if __name__=="__main__":   
     parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
     parser.add_argument('--dataset',default='CIFAR10',type=str, help='dataset to train')
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+    parser.add_argument('--ConCoeff', default=0.5, type=float, help='contraction coefficients')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
     parser.add_argument('--savepath', type=str,required=False, default='./Results/',
                     help='Path to save results')
     args = parser.parse_args()
-    params=[np.random.randint(300*0.4,300),np.random.uniform(0.5,0.9)]
+    MAX =100
+    params=[128,args.ConCoeff]
 
-    ResNet(args.dataset,params,args.lr,args.resume,args.savepath)
+    [Acc,_]=ResNet(args.dataset,params,args.lr,args.resume,args.savepath)
+    
+
+    FileName=args.dataset+'_ParametersChanges.csv'
+    newdata=[args.ConCoeff,Acc]
+    PathFileName=os.path.join(savepath,FileName)
+    SV.SaveDataCsv(PathFileName,newdata)
