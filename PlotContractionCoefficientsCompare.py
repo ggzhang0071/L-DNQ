@@ -1,8 +1,7 @@
-Learn more or give us feedback
 import numpy as np
 import matplotlib.pyplot as plt
 
-DataSave=np.load('Logs/OK/AccCoefficientsChanges.csv')
+DataSave=np.load('CIFAR10TestAccConvergenceChanges.csv')
 
 def SaveDataCsv(PathFileName):
     with open(PathFileName,'r') as readFile:
@@ -19,15 +18,16 @@ Error=DataSave[2]
 # coefficients
 
 NewError=[]
+coefficients=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 plt.style.use('ggplot')
-parts=2
+parts=5
 for i in range(parts):
-    plt.plot(Error[i][0][1:160], lw=1.5)
-for i in range(parts,len(coefficients)):
-    plt.plot(Error[i][0][1:160],'--', lw=1.5)
+    plt.plot(Acc[i], lw=1.5)
+for i in range(parts,10):
+    plt.plot(Acc[i],'--', lw=1.5)
     
 plt.xlabel('Iterations')
-plt.ylabel('Error')
+plt.ylabel('Accurracy')
 
 plt.legend(tuple(coefficients))
 plt.savefig('ContractionCoefficientsCompare_CIFAR10.png',dpi=600)
