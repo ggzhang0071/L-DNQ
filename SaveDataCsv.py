@@ -1,9 +1,7 @@
 import csv
 import os
-newdata =[0,0,0,0,0,0]
-Path='./Results/'
-FileName='AccuracyRate.csv'
-PathFileName=os.path.join(Path,FileName)
+
+
 def SaveDataCsv(PathFileName,newdata):
     with open(PathFileName,'r') as readFile:
             reader =csv.reader(readFile)
@@ -17,3 +15,10 @@ def SaveDataCsv(PathFileName,newdata):
 
     readFile.close()
     writeFile.close()
+    
+if __name__=="__main__":   
+    newdata =[0,0,0,0,0,0]
+    Path='/Results/'
+    FileName='CIFAR10AccConvergenceChanges.csv'
+    PathFileName=os.path.join(Path,FileName)
+    SaveDataCsv(PathFileName,newdata)
