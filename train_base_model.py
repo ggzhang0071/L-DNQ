@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
-
+import statistics
 import torchvision
 import torchvision.transforms as transforms
 import numpy as np
@@ -93,75 +93,85 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         torch.save(net.module.state_dict(), './%s/%s_pretrain.pth' %(model_name, model_name))
     return TestAcc
 
-def ResNet(dataset,params,Epochs,lr,resume,savepath):
+def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
     use_cuda = torch.cuda.is_available()
     best_acc = 0  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     model_name = 'ResNet20'
+    
+    
+    TrainConvergence=np.zeros((MentSize,Epochs))
+    TestConvergence=np.zeros((MentSize,Epochs))
+    for k in range(MentSize):
+        # Data
+        print('==> Preparing data..')
+        Batch_size=int(params[0])
+        trainloader = get_dataloader(dataset, 'train', Batch_size)
+        testloader = get_dataloader(dataset, 'test', 100)
 
-    # Data
-    print('==> Preparing data..')
-    Batch_size=int(params[0])
-    trainloader = get_dataloader(dataset, 'train', Batch_size)
-    testloader = get_dataloader(dataset, 'test', 100)
+        # Model
+        if resume:
+            # Load checkpoint.
+            print('==> Resuming from checkpoint..')
+            assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
+            checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
+            net = checkpoint['net']
+            best_acc = checkpoint['acc']
+            start_epoch = checkpoint['epoch']
+        else:
+            print('==> Building model..')
+            # net = VGG(model_name)
+            # net = ResNet18()
+            # net = PreActResNet18()
+            # net = GoogLeNet()
+            # net = DenseNet121()
+            # net = ResNeXt29_2x64d()
+            # net = MobileNet()
+            # net = MobileNetV2()
+            # net = DPN92()
+            # net = ShuffleNetG2()
+            # net = SENet18()
+            # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
+            # net = resnet32_cifar()
+            # net = resnet56_cifar()
+            net = resnet20_cifar()
 
-    # Model
-    if resume:
-        # Load checkpoint.
-        print('==> Resuming from checkpoint..')
-        assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-        checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
-        net = checkpoint['net']
-        best_acc = checkpoint['acc']
-        start_epoch = checkpoint['epoch']
-    else:
-        print('==> Building model..')
-        # net = VGG(model_name)
-        # net = ResNet18()
-        # net = PreActResNet18()
-        # net = GoogLeNet()
-        # net = DenseNet121()
-        # net = ResNeXt29_2x64d()
-        # net = MobileNet()
-        # net = MobileNetV2()
-        # net = DPN92()
-        # net = ShuffleNetG2()
-        # net = SENet18()
-        # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
-        # net = resnet32_cifar()
-        # net = resnet56_cifar()
-        net = resnet20_cifar(params[1])
+        if use_cuda:
+            net.cuda()
+            net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+            cudnn.benchmark = True
 
-    if use_cuda:
-        net.cuda()
-        net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-        cudnn.benchmark = True
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
-    TestConvergence=[]
-    for epoch in range(start_epoch, start_epoch+Epochs):
-        TrainLoss=train(trainloader,net,epoch,optimizer,criterion,use_cuda)
-        TestLoss=test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name)
-        TestConvergence.append(TestLoss)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+ 
+        for epoch in range(start_epoch, start_epoch+Epochs):
+            TrainConvergence[k,epoch]=statistics.mean(train(trainloader,net,epoch,optimizer,criterion,use_cuda))
+            TestConvergence[k,epoch]=statistics.mean(test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name))
+    
+    
+    FileName=dataset+str(params)+'TrainConvergenceChanges'
+    np.save(savepath+FileName,np.mean(TrainConvergence,0))
     
     FileName=dataset+str(params)+'TestConvergenceChanges'
-    np.save(savepath+FileName,TestConvergence)
+    np.save(savepath+FileName,np.mean(TestConvergence,0))
+
+ 
     return TestConvergence[-1][-1], net.module.fc.weight
 
 if __name__=="__main__":   
     parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
     parser.add_argument('--dataset',default='CIFAR10',type=str, help='dataset to train')
-    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-    parser.add_argument('--ConCoeff', default=0.5, type=float, help='contraction coefficients')
+    parser.add_argument('--lr', default=0.1, type=float, help='learning rate') 
+    parser.add_argument('--ConCoeff', default=1, type=float, help='contraction coefficients')
     parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
+    parser.add_argument('--MentSize', default=1, type=int, help=' Monte Carlos size')
+
     parser.add_argument('--BatchSize', default=128, type=int, help='Epochs')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
-    parser.add_argument('--savepath', type=str,required=False, default='Results/',
-                    help='Path to save results')
+    parser.add_argument('--savepath', type=str,required=False, default='Results/', help='Path to save results')
     args = parser.parse_args()
     params=[args.BatchSize,args.ConCoeff]
 
-    [Acc,_]=ResNet(args.dataset,params,args.Epochs,args.lr,args.resume,args.savepath)
+    [Acc,_]=ResNet(args.dataset,params,args.Epochs,args.MentSize,args.lr,args.resume,args.savepath)
     
 

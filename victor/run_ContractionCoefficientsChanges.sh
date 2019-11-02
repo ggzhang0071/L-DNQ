@@ -13,8 +13,9 @@ do
 done
 COMMENT
 
-for i in 60 100 140 180
+#  
+for i in 64 128 256 512 1024
 do
  echo "Batch size $i"
- python3 train_base_model.py --BatchSize $i --Epochs 40 2>&1 |tee Logs/${name}_${dataset}_$timestamp.log
+ python3  train_base_model.py --BatchSize $i --Epochs 80 --MentSize 20 2>&1 |tee Logs/${name}_${dataset}_$timestamp.log
 done
