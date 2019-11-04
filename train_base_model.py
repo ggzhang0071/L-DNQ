@@ -14,22 +14,23 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import argparse
 
 from models_CIFAR10.resnet import resnet20_cifar
 from torch.autograd import Variable
-from utils.train import progress_bar
+#from utils.train import progress_bar
 from utils.dataset import get_dataloader
-
+import SaveDataCsv as SV
 
 # Training
 def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
-    print('\nEpoch: %d' % epoch)
+    #print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
     correct = 0
     total = 0
+    TrainLoss=[]
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
@@ -45,15 +46,17 @@ def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        progress_bar(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+        """print(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))"""
+        TrainLoss.append(train_loss/(batch_idx+1)) 
+    return TrainLoss
 
 def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
     net.eval()
     test_loss = 0
     correct = 0
     total = 0
-    Acc=[]
+    TestAcc=[]
     for batch_idx, (inputs, targets) in enumerate(testloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
@@ -68,14 +71,14 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        progress_bar(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))
-        Acc.append(100.*float(correct)/total) 
+        """print(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))"""
+        TestAcc.append(test_loss/(batch_idx+1)) 
     
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
-        print('Saving..')
+        #print('Saving..')
         state = {
             'net': net.module if use_cuda else net,
             'acc': acc,
@@ -88,9 +91,9 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         if not os.path.exists('./%s' %model_name):
             os.makedirs('./%s' %model_name)
         torch.save(net.module.state_dict(), './%s/%s_pretrain.pth' %(model_name, model_name))
-    return Acc[-1]
+    return TestAcc
 
-def ResNet(dataset,params,lr,resume,savepath):
+def ResNet(dataset,params,Epochs,lr,resume,savepath):
     use_cuda = torch.cuda.is_available()
     best_acc = 0  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
@@ -136,19 +139,28 @@ def ResNet(dataset,params,lr,resume,savepath):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
-    for epoch in range(start_epoch, start_epoch+200):
-        train(trainloader,net,epoch,optimizer,criterion,use_cuda)
-        Acc=test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name)
-    return Acc, net.module.fc.weight
+    TestConvergence=[]
+    for epoch in range(start_epoch, start_epoch+Epochs):
+        TrainLoss=train(trainloader,net,epoch,optimizer,criterion,use_cuda)
+        TestLoss=test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name)
+        TestConvergence.append(TestLoss)
+    
+    """FileName=dataset+str(params)+'TestConvergenceChanges'
+    np.save(savepath+FileName,TestConvergence)"""
+    return TestConvergence[-1][-1], net.module.fc.weight
 
 if __name__=="__main__":   
     parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
     parser.add_argument('--dataset',default='CIFAR10',type=str, help='dataset to train')
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+    parser.add_argument('--ConCoeff', default=0.5, type=float, help='contraction coefficients')
+    parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
-    parser.add_argument('--savepath', type=str,required=False, default='./Results/',
+    parser.add_argument('--savepath', type=str,required=False, default='Results/',
                     help='Path to save results')
     args = parser.parse_args()
-    params=[np.random.randint(300*0.4,300),np.random.uniform(0.5,0.9)]
+    params=[128,args.ConCoeff,args.Epochs]
 
-    ResNet(args.dataset,params,args.lr,args.resume,args.savepath)
+    [Acc,_]=ResNet(args.dataset,params,args.lr,args.resume,args.savepath)
+    
+
