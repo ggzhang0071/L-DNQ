@@ -134,7 +134,7 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
             # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
             # net = resnet32_cifar()
             # net = resnet56_cifar()
-            net = resnet20_cifar()
+            net = resnet20_cifar(params[1])
 
         if use_cuda:
             net.cuda()
@@ -166,7 +166,7 @@ if __name__=="__main__":
     parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
     parser.add_argument('--MentSize', default=1, type=int, help=' Monte Carlos size')
 
-    parser.add_argument('--BatchSize', default=128, type=int, help='Epochs')
+    parser.add_argument('--BatchSize', default=512, type=int, help='Epochs')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
     parser.add_argument('--savepath', type=str,required=False, default='Results/', help='Path to save results')
     args = parser.parse_args()

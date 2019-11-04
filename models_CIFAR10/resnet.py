@@ -11,6 +11,7 @@ This code is forked and modified from 'https://github.com/junyuseu/pytorch-cifar
 import torch
 import torch.nn as nn
 import math
+import numpy as np
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -162,17 +163,17 @@ class PreActBottleneck(nn.Module):
 
 class ResNet_Cifar(nn.Module):
 
-    def __init__(self, block, layers, num_classes=10):
+    def __init__(self, block, Width,layers, num_classes=10):
         super(ResNet_Cifar, self).__init__()
         self.inplanes = 16
         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(16)
         self.sigmoid = nn.Sigmoid()
         self.layer1 = self._make_layer(block, 16, layers[0])
-        self.layer2 = self._make_layer(block, 32, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 64, layers[2], stride=2)
+        self.layer2 = self._make_layer(block, Width[1], layers[1], stride=2)
+        self.layer3 = self._make_layer(block, Width[2], layers[2], stride=2)
         self.avgpool = nn.AvgPool2d(8, stride=1)
-        self.fc = nn.Linear(64 * block.expansion, num_classes)
+        self.fc = nn.Linear(Width[2] * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -216,17 +217,17 @@ class ResNet_Cifar(nn.Module):
 
 class PreAct_ResNet_Cifar(nn.Module):
 
-    def __init__(self, block, layers, num_classes=10):
+    def __init__(self, block, Width,layers, num_classes=10):
         super(PreAct_ResNet_Cifar, self).__init__()
         self.inplanes = 16
         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
         self.layer1 = self._make_layer(block, 16, layers[0])
-        self.layer2 = self._make_layer(block, 32, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 64, layers[2], stride=2)
-        self.bn = nn.BatchNorm2d(64*block.expansion)
+        self.layer2 = self._make_layer(block, Width[1], layers[1], stride=2)
+        self.layer3 = self._make_layer(block, Width[2], layers[2], stride=2)
+        self.bn = nn.BatchNorm2d(Width[2]*block.expansion)
         self.sigmoid = nn.Sigmoid()
         self.avgpool = nn.AvgPool2d(8, stride=1)
-        self.fc = nn.Linear(64*block.expansion, num_classes)
+        self.fc = nn.Linear(Width[2]*block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -265,60 +266,71 @@ class PreAct_ResNet_Cifar(nn.Module):
 
         return x
 
-
-
-def resnet20_cifar(**kwargs):
-    model = ResNet_Cifar(BasicBlock, [3, 3, 3], **kwargs)
+def ContractionLayerCoefficients(alpha,Numlayers):
+    Width=[]
+    tmpOld=np.random.randint(3072*alpha,3072)
+    for k in range(Numlayers):
+        tmpNew=np.random.randint(tmpOld*alpha,tmpOld)
+        Width.append(tmpNew)
+        tmpOld=tmpNew
+    return Width
+        
+def resnet20_cifar(alpha,**kwargs):
+    Width=ContractionLayerCoefficients(alpha,3)
+    model = ResNet_Cifar(BasicBlock, Width,[3, 3, 3], **kwargs)
     return model
 
 
 def resnet32_cifar(**kwargs):
-    model = ResNet_Cifar(BasicBlock, [5, 5, 5], **kwargs)
+    Width=ContractionLayerCoefficients(params[1],3)
+    model = ResNet_Cifar(BasicBlock, Width,[5, 5, 5], **kwargs)
     return model
 
 
 def resnet44_cifar(**kwargs):
-    model = ResNet_Cifar(BasicBlock, [7, 7, 7], **kwargs)
+    ContractionLayerCoefficients(params[1],3)
+    model = ResNet_Cifar(BasicBlock, Width, [7, 7, 7], **kwargs)
     return model
 
 
 def resnet56_cifar(**kwargs):
-    model = ResNet_Cifar(BasicBlock, [9, 9, 9], **kwargs)
+    ContractionLayerCoefficients(params[1],3)
+    model = ResNet_Cifar(BasicBlock, Width, [9, 9, 9], **kwargs)
     return model
 
 
 def resnet110_cifar(**kwargs):
-    model = ResNet_Cifar(BasicBlock, [18, 18, 18], **kwargs)
+    model = ResNet_Cifar(BasicBlock, Width, [18, 18, 18], **kwargs)
     return model
 
 
 def resnet1202_cifar(**kwargs):
-    model = ResNet_Cifar(BasicBlock, [200, 200, 200], **kwargs)
+    model = ResNet_Cifar(BasicBlock, Width, [200, 200, 200], **kwargs)
     return model
 
 
 def resnet164_cifar(**kwargs):
-    model = ResNet_Cifar(Bottleneck, [18, 18, 18], **kwargs)
+    model = ResNet_Cifar(Bottleneck, Width, [18, 18, 18], **kwargs)
     return model
 
 
 def resnet1001_cifar(**kwargs):
-    model = ResNet_Cifar(Bottleneck, [111, 111, 111], **kwargs)
+    model = ResNet_Cifar(Bottleneck, Width, [111, 111, 111], **kwargs)
     return model
 
 
 def preact_resnet110_cifar(**kwargs):
-    model = PreAct_ResNet_Cifar(PreActBasicBlock, [18, 18, 18], **kwargs)
+    model = PreAct_ResNet_Cifar(PreActBasicBlock, Width, [18, 18, 18], **kwargs)
     return model
 
 
 def preact_resnet164_cifar(**kwargs):
-    model = PreAct_ResNet_Cifar(PreActBottleneck, [18, 18, 18], **kwargs)
+    model = PreAct_ResNet_Cifar(PreActBottleneck, Width, [18, 18, 18], **kwargs)
     return model
 
 
 def preact_resnet1001_cifar(**kwargs):
-    model = PreAct_ResNet_Cifar(PreActBottleneck, [111, 111, 111], **kwargs)
+    model = PreAct_ResNet_Cifar(PreActBottleneck, Width, [111, 111, 111], **kwargs)
     return model
 
 
