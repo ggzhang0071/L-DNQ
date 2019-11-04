@@ -53,8 +53,7 @@ def get_dataloader(dataset_name, split, batch_size, \
             trainset = CIFAR10_utils.CIFAR10(root=data_root, split=split, download=True,
                                              transform=transform_train, ratio=ratio, resample=resample)
             print ('Number of training instances used: %d' %(len(trainset)))
-            loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                                 shuffle=shuffle, num_workers=2, drop_last=drop_last)
+            loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True, num_workers=2, drop_last=drop_last)
 
         elif split == 'test' or split == 'val':
             transform_test = transforms.Compose([
@@ -63,7 +62,7 @@ def get_dataloader(dataset_name, split, batch_size, \
             ])
             testset = torchvision.datasets.CIFAR10(root=data_root, train=False, download=True,
                                                    transform=transform_test)
-            loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=shuffle,
+            loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=True,
                                                  num_workers=2, drop_last=drop_last)
 
     elif dataset_name == 'ImageNet':

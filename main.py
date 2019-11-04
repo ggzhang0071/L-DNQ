@@ -5,7 +5,7 @@ import os
 import torch
 
 #os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(i) for i in range(torch.cuda.device_count())])
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 from models_CIFAR10.resnet_layer_input import *
 from models_ImageNet.resnet_layer_input import *
 from utils.hessian import generate_hessian
