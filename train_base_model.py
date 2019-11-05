@@ -14,8 +14,8 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 import argparse
-from models_CIFAR10.resnet import resnet20_cifar
-from models_MNIST.resnet import MnistResNet
+from models_CIFAR10.resnet import resnet20_cifar, resnet20_cifar_Contraction
+from models_MNIST.resnet import Resnet20_MNIST, Resnet20_MNIST_Contraction
 from torch.autograd import Variable
 #from utils.train import progress_bar
 from utils.dataset import get_dataloader
@@ -94,7 +94,7 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         best_acc = acc
         if not os.path.exists('./%s' %model_name):
             os.makedirs('./%s' %model_name)
-        torch.save(net.module.state_dict(), './%s/%s_pretrain.pth' %(model_name, model_name))
+        torch.save(net.module.state_dict(), './%s/%s%s_pretrain.pth' %(model_name, dataset, model_name))
     return TestAcc
 
 
@@ -116,34 +116,33 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
         trainloader, testloader = data_loading(DataPath,dataset,Batch_size)
         # Model
         if dataset=='MNIST':
-       
-            net = MnistResNet()
+            if params[1]==1:
+                net = Resnet20_MNIST()
+            elif params[1]>0 and params[1]<1:
+                net = Resnet20_MNIST_Contraction(params[1]) 
+            else:
+                #print('Contraction coefficient should be [0,1], Now is: %d',% params[1])
+                break
+                
         elif dataset=='CIFAR10':
-            if resume:
+            if params[1]==1:
+                net = resnet20_cifar()
+            elif params[1]>0 and params[1]<1:
+                net = resnet20_cifar_Contraction(params[1])
+                
+            else:
+                #print('Contraction coefficient should be [0,1], Now is: %d',% params[1])
+                break
+                
+            """if resume:
                 # Load checkpoint.
                 print('==> Resuming from checkpoint..')
                 assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
                 checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
                 net = checkpoint['net']
                 best_acc = checkpoint['acc']
-                start_epoch = checkpoint['epoch']
-            else:
-                print('==> Building model..')
-                # net = VGG(model_name)
-                # net = ResNet18()
-                # net = PreActResNet18()
-                # net = GoogLeNet()
-                # net = DenseNet121()
-                # net = ResNeXt29_2x64d()
-                # net = MobileNet()
-                # net = MobileNetV2()
-                # net = DPN92()
-                # net = ShuffleNetG2()
-                # net = SENet18()
-                # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
-                # net = resnet32_cifar()
-                # net = resnet56_cifar()
-                net = resnet20_cifar()
+                start_epoch = checkpoint['epoch']"""
+
 
         if use_cuda:
             net.cuda()
