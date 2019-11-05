@@ -13,15 +13,19 @@ import statistics
 import torchvision
 import torchvision.transforms as transforms
 import numpy as np
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import argparse
-
 from models_CIFAR10.resnet import resnet20_cifar
+from models_MNIST.resnet import MnistResNet
 from torch.autograd import Variable
 #from utils.train import progress_bar
 from utils.dataset import get_dataloader
 import SaveDataCsv as SV
+import os,sys
+from ImageDataLoader import data_loading
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+DataPath='/git/data'
+sys.path.append(DataPath)
+
 
 # Training
 def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
@@ -107,35 +111,39 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
         # Data
         print('==> Preparing data..')
         Batch_size=int(params[0])
-        trainloader = get_dataloader(dataset, 'train', Batch_size)
-        testloader = get_dataloader(dataset, 'test', 100)
-
+        """trainloader = get_dataloader(dataset, 'train', Batch_size)
+        testloader = get_dataloader(dataset, 'test', 100)"""
+        trainloader, testloader = data_loading(DataPath,dataset,Batch_size)
         # Model
-        if resume:
-            # Load checkpoint.
-            print('==> Resuming from checkpoint..')
-            assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-            checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
-            net = checkpoint['net']
-            best_acc = checkpoint['acc']
-            start_epoch = checkpoint['epoch']
-        else:
-            print('==> Building model..')
-            # net = VGG(model_name)
-            # net = ResNet18()
-            # net = PreActResNet18()
-            # net = GoogLeNet()
-            # net = DenseNet121()
-            # net = ResNeXt29_2x64d()
-            # net = MobileNet()
-            # net = MobileNetV2()
-            # net = DPN92()
-            # net = ShuffleNetG2()
-            # net = SENet18()
-            # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
-            # net = resnet32_cifar()
-            # net = resnet56_cifar()
-            net = resnet20_cifar(params[1])
+        if dataset=='MNIST':
+       
+            net = MnistResNet()
+        elif dataset=='CIFAR10':
+            if resume:
+                # Load checkpoint.
+                print('==> Resuming from checkpoint..')
+                assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
+                checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
+                net = checkpoint['net']
+                best_acc = checkpoint['acc']
+                start_epoch = checkpoint['epoch']
+            else:
+                print('==> Building model..')
+                # net = VGG(model_name)
+                # net = ResNet18()
+                # net = PreActResNet18()
+                # net = GoogLeNet()
+                # net = DenseNet121()
+                # net = ResNeXt29_2x64d()
+                # net = MobileNet()
+                # net = MobileNetV2()
+                # net = DPN92()
+                # net = ShuffleNetG2()
+                # net = SENet18()
+                # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
+                # net = resnet32_cifar()
+                # net = resnet56_cifar()
+                net = resnet20_cifar()
 
         if use_cuda:
             net.cuda()
@@ -156,56 +164,7 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
     FileName=dataset+str(params)+'TestConvergenceChanges'
     np.save(savepath+FileName,np.mean(TestConvergence,0))
 
-    # Data
-    print('==> Preparing data..')
-    Batch_size=int(params[0])
-    trainloader = get_dataloader(dataset, 'train', Batch_size)
-    testloader = get_dataloader(dataset, 'test', 100)
 
-    # Model
-    if resume:
-        # Load checkpoint.
-        print('==> Resuming from checkpoint..')
-        assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-        checkpoint = torch.load('./checkpoint/%s_ckpt.t7' %model_name)
-        net = checkpoint['net']
-        best_acc = checkpoint['acc']
-        start_epoch = checkpoint['epoch']
-    else:
-        print('==> Building model..')
-        # net = VGG(model_name)
-        # net = ResNet18()
-        # net = PreActResNet18()
-        # net = GoogLeNet()
-        # net = DenseNet121()
-        # net = ResNeXt29_2x64d()
-        # net = MobileNet()
-        # net = MobileNetV2()
-        # net = DPN92()
-        # net = ShuffleNetG2()
-        # net = SENet18()
-        # net = Wide_ResNet(**{'widen_factor':20, 'depth':28, 'dropout_rate':0.3, 'num_classes':10})
-        # net = resnet32_cifar()
-        # net = resnet56_cifar()
-        net = resnet20_cifar(params[1])
-
-    if use_cuda:
-        net.cuda()
-        net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-        cudnn.benchmark = True
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
-    TestConvergence=[]
-    for epoch in range(start_epoch, start_epoch+Epochs):
-        TrainLoss=train(trainloader,net,epoch,optimizer,criterion,use_cuda)
-        TestLoss=test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name)
-        TestConvergence.append(TestLoss)
-    
-    """FileName=dataset+str(params)+'TestConvergenceChanges'
-    np.save(savepath+FileName,TestConvergence)"""
-
- 
     return TestConvergence[-1][-1], net.module.fc.weight
 
 if __name__=="__main__":   
