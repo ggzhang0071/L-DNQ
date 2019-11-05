@@ -22,7 +22,7 @@ from utils.dataset import get_dataloader
 import SaveDataCsv as SV
 import os,sys
 from ImageDataLoader import data_loading
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2,3,4,5,6,7'
 DataPath='/git/data'
 sys.path.append(DataPath)
 
@@ -55,7 +55,7 @@ def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
         TrainLoss.append(train_loss/(batch_idx+1)) 
     return TrainLoss
 
-def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
+def test(dataset,testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
     net.eval()
     test_loss = 0
     correct = 0
@@ -154,7 +154,7 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
  
         for epoch in range(start_epoch, start_epoch+Epochs):
             TrainConvergence[k,epoch]=statistics.mean(train(trainloader,net,epoch,optimizer,criterion,use_cuda))
-            TestConvergence[k,epoch]=statistics.mean(test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name))
+            TestConvergence[k,epoch]=statistics.mean(test(dataset,testloader,net,epoch,criterion,best_acc,use_cuda,model_name))
     
     
     FileName=dataset+str(params)+'TrainConvergenceChanges'
