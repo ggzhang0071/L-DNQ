@@ -112,7 +112,11 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
         Batch_size=int(params[0])
         """trainloader = get_dataloader(dataset, 'train', Batch_size)
         testloader = get_dataloader(dataset, 'test', 100)"""
-        trainloader, testloader = data_loading(DataPath,dataset,Batch_size)
+        
+        trainloader = data_loading(DataPath,dataset,'train',Batch_size)
+        testloader = data_loading(DataPath,dataset,'test', 100)
+  
+    
         # Model
         if dataset=='MNIST':
             if params[1]==1:
