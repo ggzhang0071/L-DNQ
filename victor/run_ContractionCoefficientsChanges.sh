@@ -6,7 +6,6 @@ cd $TOP
 #  'CIFAR10'
 dataset='MNIST' 
 
-
 #
 for i in 0.1 0.2 0.4 0.6 
 do
