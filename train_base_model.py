@@ -22,14 +22,13 @@ from utils.dataset import get_dataloader
 import SaveDataCsv as SV
 import os,sys
 from ImageDataLoader import data_loading
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2,3,4,5,6,7'
 DataPath='/git/data'
 sys.path.append(DataPath)
 
 
 # Training
 def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
-    #print('\nEpoch: %d' % epoch)
+    print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
     correct = 0
@@ -50,8 +49,8 @@ def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        """print(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))"""
+        print(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
         TrainLoss.append(train_loss/(batch_idx+1)) 
     return TrainLoss
 
@@ -75,8 +74,8 @@ def test(dataset,testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        """print(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))"""
+        print(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))
         TestAcc.append(test_loss/(batch_idx+1)) 
     
     # Save checkpoint.
@@ -173,11 +172,13 @@ if __name__=="__main__":
     parser.add_argument('--ConCoeff', default=1, type=float, help='contraction coefficients')
     parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
     parser.add_argument('--MentSize', default=1, type=int, help=' Monte Carlos size')
+    parser.add_argument('--gpus', default="0", type=str, help="gpu devices")
 
     parser.add_argument('--BatchSize', default=512, type=int, help='Epochs')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
     parser.add_argument('--savepath', type=str,required=False, default='Results/', help='Path to save results')
     args = parser.parse_args()
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     params=[args.BatchSize,args.ConCoeff]
 
     [Acc,_]=ResNet(args.dataset,params,args.Epochs,args.MentSize,args.lr,args.resume,args.savepath)
