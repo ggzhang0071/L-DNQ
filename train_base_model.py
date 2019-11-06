@@ -22,7 +22,6 @@ from utils.dataset import get_dataloader
 import SaveDataCsv as SV
 import os,sys
 from ImageDataLoader import data_loading
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 DataPath='/git/data'
 sys.path.append(DataPath)
 
@@ -113,7 +112,11 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
         Batch_size=int(params[0])
         """trainloader = get_dataloader(dataset, 'train', Batch_size)
         testloader = get_dataloader(dataset, 'test', 100)"""
-        trainloader, testloader = data_loading(DataPath,dataset,Batch_size)
+        
+        trainloader = data_loading(DataPath,dataset,'train',Batch_size)
+        testloader = data_loading(DataPath,dataset,'test', 100)
+  
+    
         # Model
         if dataset=='MNIST':
             if params[1]==1:
@@ -173,11 +176,13 @@ if __name__=="__main__":
     parser.add_argument('--ConCoeff', default=1, type=float, help='contraction coefficients')
     parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
     parser.add_argument('--MentSize', default=1, type=int, help=' Monte Carlos size')
+    parser.add_argument('--gpus', default="0", type=str, help="gpu devices")
 
     parser.add_argument('--BatchSize', default=512, type=int, help='Epochs')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')
     parser.add_argument('--savepath', type=str,required=False, default='Results/', help='Path to save results')
     args = parser.parse_args()
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     params=[args.BatchSize,args.ConCoeff]
 
     [Acc,_]=ResNet(args.dataset,params,args.Epochs,args.MentSize,args.lr,args.resume,args.savepath)
