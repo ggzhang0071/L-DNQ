@@ -103,7 +103,6 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     model_name = 'ResNet20'
     
-    
     TrainConvergence=np.zeros((MentSize,Epochs))
     TestConvergence=np.zeros((MentSize,Epochs))
     for k in range(MentSize):
@@ -176,7 +175,7 @@ if __name__=="__main__":
     parser.add_argument('--ConCoeff', default=1, type=float, help='contraction coefficients')
     parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
     parser.add_argument('--MentSize', default=1, type=int, help=' Monte Carlos size')
-    parser.add_argument('--gpus', default="0", type=str, help="gpu devices")
+    parser.add_argument('--gpus', default="2,3", type=str, help="gpu devices")
 
     parser.add_argument('--BatchSize', default=512, type=int, help='Epochs')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')

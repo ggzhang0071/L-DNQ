@@ -43,10 +43,10 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,Epochs,NumSave,lr,resume,savep
 
     #all particle initialized
     particles = []
-    Max=80
+    Max=1024
     for i in range(num_particles):
         p = Particle()
-        p.params=[np.random.randint(Max*0.6,Max),np.random.uniform(0.5,0.9)]
+        p.params=[np.random.randint(Max*0.5,Max),np.random.uniform(0.2,0.9)]
 
         p.fitness = rnd.rand()
         p.velocity = 0.3*rnd.randn(dim)
@@ -69,14 +69,14 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,Epochs,NumSave,lr,resume,savep
         for p in particles:
             fitness = 0
             y_train = 0
-            if p.params[0]<Max*0.6 or p.params[0]>Max:
-                p.params[0]=np.random.randint(Max*0.4,Max)
+            if p.params[0]<Max*0.5 or p.params[0]>Max:
+                p.params[0]=np.random.randint(Max*0.5,Max)
                 
-            if p.params[1]<0.4 or p.params[1]>0.9:
-                p.params[1]=np.random.uniform(0.5,0.9)
+            if p.params[1]<0.2 or p.params[1]>0.9:
+                p.params[1]=np.random.uniform(0.2,0.9)
   
             print('hidden size, and contraction coefficients are:',p.params[0],p.params[1])
-            [fitness,hidden0] = ResNetBasics.ResNet(dataset,p.params,Epochs,lr,resume,savepath)
+            [fitness,hidden0] = ResNetBasics.ResNet(dataset,p.params,Epochs,1,lr,resume,savepath)
             hiddensize=int(p.params[0])
             
             
@@ -150,7 +150,7 @@ def PSOGSA_ResNet(dataset,max_iters,num_particles,Epochs,NumSave,lr,resume,savep
     plt.draw()
     plt.savefig(savepath+dataset+'_ConvergenceChanges.png',dpi=600)  
 
-    sys.stdout.write('\rMPSOGSA is training ESN (Iteration = ' + str(i+1) + ', MSE = ' + str(gbest_score) + ')')
+    sys.stdout.write('\rMPSOGSA is training ResnNet (Iteration = ' + str(i+1) + ', MSE = ' + str(gbest_score) + ')')
     sys.stdout.flush()
         # save results 
     FileName=dataset+'_BestParameters.csv'
@@ -170,6 +170,8 @@ if __name__ =="__main__":
     parser.add_argument('--max_iters', type=int,default=50, help='Max iterations')
 
     parser.add_argument('--num_particles', type=int, default=30, help='Number of particles')
+    
+    parser.add_argument('--gpus', default="0", type=str, help="gpu devices")
 
     parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
 
