@@ -22,14 +22,14 @@ from utils.dataset import get_dataloader
 import SaveDataCsv as SV
 import os,sys
 from ImageDataLoader import data_loading
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 DataPath='/git/data'
 sys.path.append(DataPath)
 
 
 # Training
 def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
-    #print('\nEpoch: %d' % epoch)
+    print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
     correct = 0
@@ -50,12 +50,12 @@ def train(trainloader,net,epoch,optimizer,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        """print(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))"""
+        print(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
         TrainLoss.append(train_loss/(batch_idx+1)) 
     return TrainLoss
 
-def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
+def test(dataset,testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
     net.eval()
     test_loss = 0
     correct = 0
@@ -75,8 +75,8 @@ def test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        """print(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))"""
+        print(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            % (test_loss/(batch_idx+1), 100.*float(correct)/total, correct, total))
         TestAcc.append(test_loss/(batch_idx+1)) 
     
     # Save checkpoint.
@@ -113,7 +113,11 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
         Batch_size=int(params[0])
         """trainloader = get_dataloader(dataset, 'train', Batch_size)
         testloader = get_dataloader(dataset, 'test', 100)"""
-        trainloader, testloader = data_loading(DataPath,dataset,Batch_size)
+        
+        trainloader = data_loading(DataPath,dataset,'train',Batch_size)
+        testloader = data_loading(DataPath,dataset,'test', 100)
+  
+    
         # Model
         if dataset=='MNIST':
             if params[1]==1:
@@ -154,7 +158,7 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
  
         for epoch in range(start_epoch, start_epoch+Epochs):
             TrainConvergence[k,epoch]=statistics.mean(train(trainloader,net,epoch,optimizer,criterion,use_cuda))
-            TestConvergence[k,epoch]=statistics.mean(test(testloader,net,epoch,criterion,best_acc,use_cuda,model_name))
+            TestConvergence[k,epoch]=statistics.mean(test(dataset,testloader,net,epoch,criterion,best_acc,use_cuda,model_name))
     
     
     FileName=dataset+str(params)+'TrainConvergenceChanges'
