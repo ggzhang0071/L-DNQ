@@ -93,7 +93,7 @@ def test(dataset,testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         best_acc = acc
         if not os.path.exists('./%s' %model_name):
             os.makedirs('./%s' %model_name)
-        torch.save(net.module.state_dict(), './%s/%s%s_pretrain.pth' %(model_name, dataset, model_name))
+        torch.save(net.module.state_dict(), './%s/%s_%s_pretrain.pth' %(model_name, dataset, model_name))
     return TestAcc
 
 
