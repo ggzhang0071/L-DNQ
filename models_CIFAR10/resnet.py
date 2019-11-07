@@ -380,8 +380,8 @@ def ContractionLayerCoefficients(alpha,Numlayers):
         tmpOld=tmpNew
     return Width
 
-def resnet20_cifar(layers):
-    model = ResNet_Cifar(BasicBlock, layers, **kwargs)
+def resnet20_cifar(**kwargs):
+    model = ResNet_Cifar(BasicBlock, [3, 3, 3], **kwargs)
     return model
 
 def resnet20_cifar_Contraction(alpha,**kwargs):

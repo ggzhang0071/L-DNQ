@@ -93,7 +93,7 @@ def test(dataset,testloader,net,epoch,criterion,best_acc,use_cuda,model_name):
         best_acc = acc
         if not os.path.exists('./%s' %model_name):
             os.makedirs('./%s' %model_name)
-        torch.save(net.module.state_dict(), './%s/%s%s_pretrain.pth' %(model_name, dataset, model_name))
+        torch.save(net.module.state_dict(), './%s/%s_%s_pretrain.pth' %(model_name, dataset, model_name))
     return TestAcc
 
 
@@ -102,7 +102,6 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
     best_acc = 0  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     model_name = 'ResNet20'
-    
     
     TrainConvergence=np.zeros((MentSize,Epochs))
     TestConvergence=np.zeros((MentSize,Epochs))
@@ -177,7 +176,7 @@ if __name__=="__main__":
     parser.add_argument('--ConCoeff', default=1, type=float, help='contraction coefficients')
     parser.add_argument('--Epochs', default=1, type=int, help='Epochs')
     parser.add_argument('--MentSize', default=1, type=int, help=' Monte Carlos size')
-    parser.add_argument('--gpus', default="0", type=str, help="gpu devices")
+    parser.add_argument('--gpus', default="2,3", type=str, help="gpu devices")
 
     parser.add_argument('--BatchSize', default=512, type=int, help='Epochs')
     parser.add_argument('--resume', '-r', action='store_true', default=False, help='resume from checkpoint')

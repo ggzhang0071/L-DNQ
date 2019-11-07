@@ -2,13 +2,17 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
-
 from datetime import datetime
-
 import tensorflow as tf
-import os
 import numpy as np
-
+import os,sys
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+sys.path.append('/git')
+from models_ImageNet.resnet_layer_input import resnet18 as NetWork
+from utils.dataset import get_dataloader 
+DataPath='/git/data'
+sys.path.append(DataPath)
+from ImageDataLoader import data_loading
 
 # Construct hessian computing graph for res layer (conv layer without bias)
 def create_res_hessian_computing_tf_graph(input_shape, layer_kernel, layer_stride):
@@ -179,14 +183,9 @@ def generate_hessian(net, trainloader, layer_name, layer_type, n_batch_used = 10
 
 
 if __name__ == '__main__':
-    import os
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
-    from models_ImageNet.resnet_layer_input import resnet18 as NetWork
-    from utils.dataset import get_dataloader
-
     use_cuda = torch.cuda.is_available()
-
-    hessian_loader = get_dataloader("ImageNet", 'val', batch_size=2, length=10000)
+    #hessian_loader=data_loading('/git/data','CIFAR10','val',2)
+    hessian_loader = get_dataloader("CIFAR10", 'val', batch_size=2)
     print('Length of hessian loader: %d' % (len(hessian_loader)))
 
     ################
