@@ -50,11 +50,11 @@ def QuantizedNet(dataset,model_name,batch_size,lr,kbits,require_first_test,quant
     
     # Load Dataset #
     ################
-    train_loader = get_dataloader(dataset, 'limited', batch_size = batch_size, ratio=0.01)
+    """train_loader = get_dataloader(dataset, 'limited', batch_size = batch_size, ratio=0.01)
     print ('Length of train loader: %d' %(len(train_loader)))
     hessian_loader = get_dataloader(dataset, 'limited', batch_size = 2)
     print ('Length of hessian loader: %d' %(len(hessian_loader)))
-    test_loader = get_dataloader(dataset, 'test', batch_size = 100)
+    test_loader = get_dataloader(dataset, 'test', batch_size = 100)"""
 
     train_loader = data_loading(DataPath,dataset,'limited',args.batch_size)
     print ('Length of train loader: %d' %(len(train_loader)))
