@@ -108,6 +108,7 @@ def ResNet(dataset,params,Epochs,MentSize,lr,resume,savepath):
     for k in range(MentSize):
         # Data
         print('==> Preparing data..')
+        print('\n Ment calors times: %d' % k)
         Batch_size=int(params[0])
         """trainloader = get_dataloader(dataset, 'train', Batch_size)
         testloader = get_dataloader(dataset, 'test', 100)"""
