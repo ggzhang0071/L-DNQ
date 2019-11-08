@@ -1,24 +1,27 @@
-from torchvision.models.resnet import ResNet,BasicBlock
 import torch
 import torch.nn as nn
 import numpy as np
+import math
 
 # 3*3 convolutinon
-def conv3x3(in_channels, out_channels, stride=1):
-    return nn.Conv2d(in_channels, out_channels, kernel_size=3,
-                    stride=stride, padding=1, bias=False)
+def conv3x3(in_planes, out_planes, stride=1):
+    " 3x3 convolution with padding "
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
 # Residual block
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = conv3x3(in_channels, out_channels, stride)
-        self.bn1 = nn.BatchNorm2d(out_channels)
+class BasicBlock(nn.Module):
+    expansion=1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(BasicBlock, self).__init__()
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = nn.BatchNorm2d(planes)
         self.sigmoid = nn.Sigmoid()
-        self.conv2 = conv3x3(out_channels, out_channels)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
+        self.stride = stride
 
     def forward(self, x):
         residual = x
@@ -31,98 +34,136 @@ class ResidualBlock(nn.Module):
             residual = self.downsample(x)
         out += residual
         out = out*self.sigmoid(out)
+
         return out
 
+
 # ResNet
+
+
 class MnistResNet(nn.Module):
     def __init__(self, block,layers, num_classes=10):
         super(MnistResNet, self).__init__()
-        self.in_channels = 16
-        self.conv = conv3x3(1, 16)
-        self.bn = nn.BatchNorm2d(16)
+        self.inplanes = 16
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(16)
         self.sigmoid = nn.Sigmoid()
         self.layer1 = self.make_layer(block, 16, layers[0])
-        self.layer2 = self.make_layer(block, 32, layers[0], 2)
-        self.layer3 = self.make_layer(block,64, layers[1], 2)
-        self.avg_pool = nn.AvgPool2d(4)
-        self.fc = nn.Linear(64, num_classes)
+        self.layer2 = self.make_layer(block, 32, layers[1],stride=2)
+        self.layer3 = self.make_layer(block,64, layers[2], stride=2)
+        self.avgpool = nn.AvgPool2d(8)
+        self.fc = nn.Linear(64* block.expansion, num_classes)
 
-    def make_layer(self, block, out_channels, blocks, stride=1):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def make_layer(self, block, planes, blocks, stride=1):
         downsample = None
-        if (stride != 1) or (self.in_channels != out_channels):
+        if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                conv3x3(self.in_channels, out_channels, stride=stride),
-                nn.BatchNorm2d(out_channels))
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes * block.expansion)
+            )
+
         layers = []
-        layers.append(block(self.in_channels, out_channels, stride, downsample))
-        self.in_channels = out_channels
-        for i in range(1, blocks):
-            layers.append(block(out_channels, out_channels))
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.conv(x)
-        out = self.bn(out)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.avg_pool(out)
-        out = out.view(out.size(0), -1)
-        out = self.fc(out)
-        return out
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+    
+
     
 class MnistResNet_Contraction(nn.Module):
-    def __init__(self, block, Width,layers=[2, 2, 2, 2], num_classes=10):
+    def __init__(self, block, Width,layers, num_classes=10):
         super(MnistResNet_Contraction, self).__init__()
-        self.in_channels = 16
-        self.conv = conv3x3(1, 16)
-        self.bn = nn.BatchNorm2d(16)
+        self.inplanes = Width[0]
+        self.conv1 = nn.Conv2d(1, Width[0], kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(Width[0])
         self.sigmoid = nn.Sigmoid()
-        self.layer1 = self.make_layer(block, 16, layers[0])
-        self.layer2 = self.make_layer(block, Width[1], layers[0], 2)
-        self.layer3 = self.make_layer(block, Width[2], layers[1], 2)
-        self.avg_pool = nn.AvgPool2d(4)
+        self.layer1 = self.make_layer(block, Width[0], layers[0])
+        self.layer2 = self.make_layer(block, Width[1], layers[1],stride=2)
+        self.layer3 = self.make_layer(block, Width[2], layers[2], stride=2)
+        self.avgpool = nn.AvgPool2d(8)
         self.fc = nn.Linear(Width[2], num_classes)
+	
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
 
-    def make_layer(self, block, out_channels, blocks, stride=1):
+    def make_layer(self, block, planes, blocks, stride=1):
         downsample = None
-        if (stride != 1) or (self.in_channels != out_channels):
+        if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                conv3x3(self.in_channels, out_channels, stride=stride),
-                nn.BatchNorm2d(out_channels))
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes * block.expansion)
+            )
+
         layers = []
-        layers.append(block(self.in_channels, out_channels, stride, downsample))
-        self.in_channels = out_channels
-        for i in range(1, blocks):
-            layers.append(block(out_channels, out_channels))
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.conv(x)
-        out = self.bn(out)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.avg_pool(out)
-        out = out.view(out.size(0), -1)
-        out = self.fc(out)
-        return out
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
 
 def Resnet20_MNIST():
     model = MnistResNet(BasicBlock,layers=[2, 2, 2, 2])
     return model    
     
-def Resnet20_MNIST_Contraction(alpha,**kwargs):
+def Resnet20_MNIST_Contraction(alpha):
     Width=ContractionLayerCoefficients(alpha,3)
-    model = MnistResNet_Contraction(BasicBlock, Width,layers=[2, 2, 2, 2], **kwargs)
+    model = MnistResNet_Contraction(BasicBlock, Width,layers=[2, 2, 2, 2])
     return model
 
 
 def ContractionLayerCoefficients(alpha,Numlayers):
     Width=[]
-    tmpOld=np.random.randint(3072*alpha,3072)
+    tmpOld=np.random.randint(1024*alpha,1024)
     for k in range(Numlayers):
         tmpNew=np.random.randint(tmpOld*alpha,tmpOld)
         Width.append(tmpNew)
         tmpOld=tmpNew
     return Width
+    
+if __name__ == '__main__':
+  
+    net = Resnet20_MNIST()
+    #net =Resnet20_MNIST_Contraction(0.4)
+    y = net(torch.autograd.Variable(torch.randn(1, 1, 34, 34)))
+    print(net)
+    print(y.size())
