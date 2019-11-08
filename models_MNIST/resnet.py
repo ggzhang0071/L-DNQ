@@ -51,7 +51,7 @@ class MnistResNet(nn.Module):
         self.layer1 = self.make_layer(block, 16, layers[0])
         self.layer2 = self.make_layer(block, 32, layers[1],stride=2)
         self.layer3 = self.make_layer(block,64, layers[2], stride=2)
-        self.avgpool = nn.AvgPool2d(8)
+        self.avgpool = nn.AvgPool2d(4)
         self.fc = nn.Linear(64* block.expansion, num_classes)
 
         for m in self.modules():
@@ -101,7 +101,7 @@ class MnistResNet_Contraction(nn.Module):
         self.layer1 = self.make_layer(block, Width[0], layers[0])
         self.layer2 = self.make_layer(block, Width[1], layers[1],stride=2)
         self.layer3 = self.make_layer(block, Width[2], layers[2], stride=2)
-        self.avgpool = nn.AvgPool2d(8)
+        self.avgpool = nn.AvgPool2d(4)
         self.fc = nn.Linear(Width[2], num_classes)
 	
         for m in self.modules():
