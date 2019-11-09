@@ -29,7 +29,7 @@ return_output=False
 def ResumeModel(dataset,model_name,params,Monte_iter):
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
-    checkpoint = torch.load('./checkpoint/%s_%s_%s_%s_ckpt.t7' %(dataset,model_name,params,Monte_iter))
+    checkpoint = torch.load('./checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter)))
     net = checkpoint['net']
     TrainConvergence = checkpoint['TrainConvergence']
     TestConvergence = checkpoint['TestConvergence']
@@ -39,7 +39,7 @@ def ResumeModel(dataset,model_name,params,Monte_iter):
 def print_nvidia_useage():
     global print_device_useage
     if print_device_useage:
-        os.system('nvidia-smi')
+        os.system('echo check gpu;nvidia-smi;echo check done')
     else:
         pass
     
@@ -119,7 +119,7 @@ def ResNet(dataset,params,Epochs,MentSize,lr,savepath):
   
         # Model
         if dataset=='MNIST':
-            if resume and os.path.exists('./checkpoint/%s_%s_%s_%s_ckpt.t7' %(dataset,model_name,params,Monte_iter)):
+            if resume and os.path.exists('./checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter))):
                 [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(dataset,model_name,params,Monte_iter)
             else:
                 if params[1]==1:
@@ -131,8 +131,8 @@ def ResNet(dataset,params,Epochs,MentSize,lr,savepath):
                     pass
                 
         elif dataset=='CIFAR10':
-            if resume:
-                ResumeModel(dataset,model_name,params,Monte_iter)
+            if resume and os.path.exists('./checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter))):
+                [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(dataset,model_name,params,Monte_iter)
             elif params[1]==1:
                 net = resnet20_cifar()
             elif params[1]>0 and params[1]<1:
@@ -169,7 +169,7 @@ def ResNet(dataset,params,Epochs,MentSize,lr,savepath):
                 }
                 if not os.path.isdir('checkpoint'):
                     os.mkdir('checkpoint')
-                torch.save(state, './checkpoint/%s_%s_%s_%s_ckpt.t7' %(dataset,model_name,params,Monte_iter))
+                torch.save(state, './checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter)))
 
                 best_loss = TestConvergence[epoch]
                 if not os.path.exists('./%s' %model_name):
