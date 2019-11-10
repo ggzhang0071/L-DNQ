@@ -141,14 +141,18 @@ class MnistResNet_Contraction(nn.Module):
         return x
 
 
-def Resnet20_MNIST():
-    model = MnistResNet(BasicBlock,layers=[2, 2, 2, 2])
+def Resnet20_MNIST(alpha):
+    layers=[2, 2, 2, 2]
+    Numlayers=len(layers)
+    if alpha==1:
+        model = MnistResNet(BasicBlock,layers)
+    elif alpha>0 and alpha<1:
+        Width=ContractionLayerCoefficients(alpha,3)
+        model = MnistResNet_Contraction(BasicBlock, Width,layers)
+    else:
+        raise Exception('Contraction coefficient should be [0,1], now is: {}'.format(alpha)) 
     return model    
     
-def Resnet20_MNIST_Contraction(alpha):
-    Width=ContractionLayerCoefficients(alpha,3)
-    model = MnistResNet_Contraction(BasicBlock, Width,layers=[2, 2, 2, 2])
-    return model
 
 
 def ContractionLayerCoefficients(alpha,Numlayers):
@@ -160,10 +164,10 @@ def ContractionLayerCoefficients(alpha,Numlayers):
         tmpOld=tmpNew
     return Width
     
+
 if __name__ == '__main__':
   
-    net = Resnet20_MNIST()
-    #net =Resnet20_MNIST_Contraction(0.4)
-    y = net(torch.autograd.Variable(torch.randn(1, 1, 34, 34)))
+    net = Resnet20_MNIST(7)
+    y = net(torch.autograd.Variable(torch.randn(1, 1, 28, 28)))
     print(net)
     print(y.size())

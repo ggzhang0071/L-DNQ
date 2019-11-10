@@ -14,8 +14,8 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 import argparse
-from models_CIFAR10.resnet import resnet20_cifar, resnet20_cifar_Contraction
-from models_MNIST.resnet import Resnet20_MNIST, Resnet20_MNIST_Contraction
+import models_MNIST.resnet as MNIST_resnet
+import models_CIFAR10.resnet as CIFAR10_resnet
 from torch.autograd import Variable
 #from utils.train import progress_bar
 import os,sys
@@ -26,10 +26,10 @@ print_device_useage=False
 aresume=True
 return_output=False
 
-def ResumeModel(dataset,model_name,params,Monte_iter):
+def ResumeModel(model_to_save):
     # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    checkpoint = torch.load('./checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter)))
+    #print('==> Resuming from checkpoint..')
+    checkpoint = torch.load(model_to_save)
     net = checkpoint['net']
     TrainConvergence = checkpoint['TrainConvergence']
     TestConvergence = checkpoint['TestConvergence']
@@ -61,13 +61,15 @@ def train(trainloader,net,optimizer,criterion,use_cuda):
         optimizer.step()
 
         train_loss += loss.data.item()
-        _, predicted = torch.max(outputs.data, 1)
+        predicted = torch.max(outputs.data, 1)[1]
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
         print(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
         TrainLoss.append(train_loss/(batch_idx+1)) 
+        del loss, predicted
+
     return TrainLoss,net
 
 def test(testloader,net,criterion,use_cuda):
@@ -96,51 +98,45 @@ def test(testloader,net,criterion,use_cuda):
     return TestLoss
 
 
-def ResNet(dataset,params,Epochs,MentSize,lr,savepath):
-    use_cuda = torch.cuda.is_available()
-    best_loss = 100  # best test loss
-    start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-    model_name = 'ResNet20'
+def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
     
-    TrainConvergence=[]
-    TestConvergence=[]
-    for Monte_iter in range(MentSize):
-        # Data
-        
-        print_nvidia_useage()
-        print('\n Monte calors times: %d' % Monte_iter)
-
-        Batch_size=int(params[0])
-        """trainloader = get_dataloader(dataset, 'train', Batch_size)
+    use_cuda = torch.cuda.is_available()
+    model_name = 'ResNet20'
+  
+    Batch_size=int(params[0])
+    """trainloader = get_dataloader(dataset, 'train', Batch_size)
         testloader = get_dataloader(dataset, 'test', 100)"""
         
-        trainloader = data_loading(DataPath,dataset,'train',Batch_size)
-        testloader = data_loading(DataPath,dataset,'test', 100)
-  
-        # Model
+    trainloader = data_loading(DataPath,dataset,'train',Batch_size)
+    testloader = data_loading(DataPath,dataset,'test', 100)
+    
+    for Monte_iter in range(MonteSize):
+        # Data
+        best_loss = 100  # best test loss
+        start_epoch = 0  # start from epoch 0 or last checkpoint epoch         
+        TrainConvergence=[]
+        TestConvergence=[]
+
+        # model 
+        model_to_save='./checkpoint/{}-{}-param_{}_{}-Mon_{}-ckpt.pth'.format(dataset,model_name,params[0],params[1],Monte_iter)
+        print('The model to save is {}'.format(model_to_save))
         if dataset=='MNIST':
-            if resume and os.path.exists('./checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter))):
-                [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(dataset,model_name,params,Monte_iter)
+            if resume and os.path.exists(model_to_save):
+                [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(model_to_save)
+                if start_epoch>=Epochs-1:
+                    continue
+                
+            
             else:
-                if params[1]==1:
-                    net = Resnet20_MNIST()
-                elif params[1]>0 and params[1]<1:
-                    net = Resnet20_MNIST_Contraction(params[1]) 
-                else:
-                    print('Contraction coefficient should be [0,1], Now is: %d' % params[1])
-                    pass
+                net=getattr(MNIST_resnet,'Resnet20_MNIST')(params[1])
                 
         elif dataset=='CIFAR10':
-            if resume and os.path.exists('./checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter))):
-                [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(dataset,model_name,params,Monte_iter)
-            elif params[1]==1:
-                net = resnet20_cifar()
-            elif params[1]>0 and params[1]<1:
-                net = resnet20_cifar_Contraction(params[1])
-
+            if resume and os.path.exists(model_to_save):
+                [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(model_to_save)
+                if start_epoch>=Epochs-1:
+                    continue
             else:
-                print('Contraction coefficient should be [0,1], Now is: %d' % params[1])
-                os.exit(0)
+                net=getattr(resnet20_cifar,'Resnet20_CIFAR10')(params[1])
 
         if use_cuda:
             net.cuda()
@@ -149,43 +145,43 @@ def ResNet(dataset,params,Epochs,MentSize,lr,savepath):
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
- 
         for epoch in range(start_epoch, start_epoch+Epochs):
             if epoch<Epochs:
-                print('\nEpoch: %d' % epoch)
+                print('Batch size: {},ConCoeff: {},MonteSize:{},epoch:{}'.format(params[0],params[1],Monte_iter,epoch))
                 [TrainLoss,net]=train(trainloader,net,optimizer,criterion,use_cuda)
                 TrainConvergence.append(statistics.mean(TrainLoss))
                 TestConvergence.append(statistics.mean(test(testloader,net,criterion,use_cuda)))
             else:
                 break
-                    # Save checkpoint.
-            if TestConvergence[epoch] < best_loss:
-                #print('Saving..')
+            if epoch%20==0:
+                print('Saving..')
                 state = {
-                    'net': net.module if use_cuda else net,
-                    'TrainConvergence': TrainConvergence,
-                    'TestConvergence': TestConvergence,
-                    'epoch': epoch,
-                }
+                        'net': net.module if use_cuda else net,
+                        'TrainConvergence': TrainConvergence,
+                        'TestConvergence': TestConvergence,
+                        'epoch': epoch,
+                    }
                 if not os.path.isdir('checkpoint'):
                     os.mkdir('checkpoint')
-                torch.save(state, './checkpoint/%s-%s-%s-%s-ckpt.pth' %(dataset,model_name,"para_{}_{}".format(params[0],params[1]),"Mon_{}".format(Monte_iter)))
-
+                torch.save(state, model_to_save)
+                    
+            if TestConvergence[epoch] < best_loss:
                 best_loss = TestConvergence[epoch]
                 if not os.path.exists('./%s' %model_name):
                     os.makedirs('./%s' %model_name)
-                torch.save(net.module.state_dict(), './%s/%s_%s_pretrain.pth' %(model_name, dataset, model_name))
+                torch.save(net.module.state_dict(), './%s/%s_%s_%s_pretrain.pth' %(model_name, dataset, model_name,Epochs))
             else:
                 pass
     
     
-    FileName=dataset+str(params)+'TrainConvergenceChanges'+str(Monte_iter)
-    np.save(savepath+FileName,TrainConvergence)
-    
-    FileName=dataset+str(params)+'TestConvergenceChanges'+str(Monte_iter)
-    np.save(savepath+FileName,TestConvergence)
+        FileName="{}-{}-param_{}_{}-monte_{}".format(dataset,model_name,params[0],params[1],Monte_iter)
+        np.save(savepath+'TrainConvergence-'+FileName,TrainConvergence)
+        np.save(savepath+'TestConvergence-'+FileName,TestConvergence)
+        torch.cuda.empty_cache()
+        print_nvidia_useage()
 
-    if save_weight:
+
+    if return_output==True:
         return TestConvergence[-1], net.module.fc.weight
     else:
         pass
@@ -201,7 +197,7 @@ if __name__=="__main__":
     parser.add_argument('--BatchSize', default=512, type=int, help='Epochs')
     parser.add_argument('--savepath', type=str, default='Results/', help='Path to save results')
     parser.add_argument('--return_output', type=str, default=False, help='Whether output')
-    parser.add_argument('--resume', '-r', type=str,default=False, help='resume from checkpoint')
+    parser.add_argument('--resume', '-r', type=str,default=True, help='resume from checkpoint')
     parser.add_argument('--print_device_useage', type=str, default=False, help='Whether print gpu useage')
 
     args = parser.parse_args()

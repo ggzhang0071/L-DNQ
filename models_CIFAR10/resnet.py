@@ -371,20 +371,26 @@ def ContractionLayerCoefficients(alpha,Numlayers):
         tmpOld=tmpNew
     return Width
 
-def resnet20_cifar():
-    model = ResNet_Cifar(BasicBlock, [3, 3, 3])
-    return model
 
-def resnet20_cifar_Contraction(alpha):
-    Width=ContractionLayerCoefficients(alpha,3)
-    model = ResNet_Cifar_Contraction(BasicBlock, Width,[3, 3, 3])
-    return model
+
+def Resnet20_CIFAR10(alpha):
+    layers=[3, 3, 3]
+    Numlayers=len(layers)
+    if alpha==1:
+        model = ResNet_Cifar(BasicBlock,layers)
+    elif alpha>0 and alpha<1:
+        Width=ContractionLayerCoefficients(alpha,Numlayers)
+        model = ResNet_Cifar_Contraction(BasicBlock, Width,layers)
+    else:
+        raise Exception('Contraction coefficient should be [0, 1], now is: {}'.format(alpha)) 
+        pass
+    return model    
+
 
 
 if __name__ == '__main__':
     # net = preact_resnet110_cifar()
-    #net = resnet20_cifar()
-    net=resnet20_cifar_Contraction(0.1)
+    net=Resnet20_CIFAR10(6)
     y = net(torch.autograd.Variable(torch.randn(1, 3, 32, 32)))
     print(net)
     print(y.size())
