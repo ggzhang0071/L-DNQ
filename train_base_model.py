@@ -112,7 +112,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
     
     for Monte_iter in range(MonteSize):
         # Data
-        best_loss = 100  # best test loss
+        best_loss = float('inf')  # best test loss
         start_epoch = 0  # start from epoch 0 or last checkpoint epoch         
         TrainConvergence=[]
         TestConvergence=[]
@@ -153,13 +153,13 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 TestConvergence.append(statistics.mean(test(testloader,net,criterion,use_cuda)))
             else:
                 break
-            if epoch%20==0:
+            if epoch%20==0 or epoch==Epochs-1:
                 print('Saving..')
                 state = {
                         'net': net.module if use_cuda else net,
                         'TrainConvergence': TrainConvergence,
                         'TestConvergence': TestConvergence,
-                        'epoch': epoch,
+                        'epoch': epoch+1,
                     }
                 if not os.path.isdir('checkpoint'):
                     os.mkdir('checkpoint')
