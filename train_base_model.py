@@ -12,6 +12,7 @@ import torch.backends.cudnn as cudnn
 import statistics
 import torchvision
 import torchvision.transforms as transforms
+from pyts.image import RecurrencePlot
 import numpy as np
 import argparse
 import models_MNIST.resnet as MNIST_resnet
@@ -33,8 +34,15 @@ def ResumeModel(model_to_save):
     net = checkpoint['net']
     TrainConvergence = checkpoint['TrainConvergence']
     TestConvergence = checkpoint['TestConvergence']
-    start_epoch = checkpoint['epoch']
+    start_epoch = checkpoint['epoch']+1
     return net,TrainConvergence,TestConvergence,start_epoch
+
+def logging(message):
+    global  print_to_logging
+    if print_to_logging:
+        print(message)
+    else:
+        pass
 
 def print_nvidia_useage():
     global print_device_useage
@@ -65,7 +73,7 @@ def train(trainloader,net,optimizer,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
 
-        print(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        logging(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
         TrainLoss.append(train_loss/(batch_idx+1)) 
         del loss, predicted
@@ -92,7 +100,7 @@ def test(testloader,net,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
         test_loss_avg=test_loss/(batch_idx+1)
-        print(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        logging(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss_avg, 100.*float(correct)/total, correct, total))
         TestLoss.append(test_loss_avg) 
     return TestLoss
@@ -119,7 +127,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
 
         # model 
         model_to_save='./checkpoint/{}-{}-param_{}_{}-Mon_{}-ckpt.pth'.format(dataset,model_name,params[0],params[1],Monte_iter)
-        print('The model to save is {}'.format(model_to_save))
+        logging('The model to save is {}'.format(model_to_save))
         if dataset=='MNIST':
             if resume and os.path.exists(model_to_save):
                 [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(model_to_save)
@@ -147,14 +155,14 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
         optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
         for epoch in range(start_epoch, start_epoch+Epochs):
             if epoch<Epochs:
-                print('Batch size: {},ConCoeff: {},MonteSize:{},epoch:{}'.format(params[0],params[1],Monte_iter,epoch))
+                logging('Batch size: {},ConCoeff: {},MonteSize:{},epoch:{}'.format(params[0],params[1],Monte_iter,epoch))
                 [TrainLoss,net]=train(trainloader,net,optimizer,criterion,use_cuda)
                 TrainConvergence.append(statistics.mean(TrainLoss))
                 TestConvergence.append(statistics.mean(test(testloader,net,criterion,use_cuda)))
             else:
                 break
-            if epoch%20==0 or epoch==Epochs-1:
-                print('Saving..')
+            if epoch%10==0 or epoch==Epochs-1:
+                logging('Saving..')
                 state = {
                         'net': net.module if use_cuda else net,
                         'TrainConvergence': TrainConvergence,
@@ -164,7 +172,23 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 if not os.path.isdir('checkpoint'):
                     os.mkdir('checkpoint')
                 torch.save(state, model_to_save)
-                    
+                
+      ## save recurrence plots
+            if epoch%20==0:
+
+                for name,parameters in net.named_parameters():
+                    if name=="fc.weight":
+                        hiddenState=parameters.cpu().detach().numpy()
+                        logging(hiddenState)
+                rp = RecurrencePlot()
+                X_rp = rp.fit_transform(hiddenState)
+                plt.figure(figsize=(6, 6))
+                plt.imshow(X_rp[0], cmap='binary', origin='lower')
+                plt.title('Recurrence Plot', fontsize=14)
+                plt.savefig("Results/RecurrencePlots/RecurrencePlots_{}_{}_BatchSize{}_ConCoeffi{}_epoch{}.png".format(dataset,model_name,                                                                                                          params[0],params[1],epoch),dpi=600)
+
+                        
+
             if TestConvergence[epoch] < best_loss:
                 best_loss = TestConvergence[epoch]
                 if not os.path.exists('./%s' %model_name):
@@ -199,6 +223,7 @@ if __name__=="__main__":
     parser.add_argument('--return_output', type=str, default=False, help='Whether output')
     parser.add_argument('--resume', '-r', type=str,default=True, help='resume from checkpoint')
     parser.add_argument('--print_device_useage', type=str, default=False, help='Whether print gpu useage')
+    parser.add_argument('--print_to_logging', type=str, default=True, help='Whether print')
 
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
