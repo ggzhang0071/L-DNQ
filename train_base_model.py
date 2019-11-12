@@ -26,6 +26,7 @@ sys.path.append(DataPath)
 print_device_useage=False
 aresume=True
 return_output=False
+print_to_logging=True
 
 def ResumeModel(model_to_save):
     # Load checkpoint.
@@ -72,10 +73,11 @@ def train(trainloader,net,optimizer,criterion,use_cuda):
         predicted = torch.max(outputs.data, 1)[1]
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
+        TrainLoss.append(train_loss/(batch_idx+1))
+        message="batch number:{},length of train loader:{}, Train Loss: {} | Accuracy rate:{}, correct {}, of total {})".format(batch_idx, len(trainloader),train_loss/(batch_idx+1), 100.*correct/total, correct, total)
+        print(message) 
 
-        logging(batch_idx, len(trainloader), 'Train Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
-        TrainLoss.append(train_loss/(batch_idx+1)) 
+          
         del loss, predicted
 
     return TrainLoss,net
@@ -100,8 +102,8 @@ def test(testloader,net,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
         test_loss_avg=test_loss/(batch_idx+1)
-        logging(batch_idx, len(testloader), 'Test Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (test_loss_avg, 100.*float(correct)/total, correct, total))
+        message="batch number:{},length of train loader:{}, Train Loss: {} | Accuracy rate:{}, correct {}, of total {})".format(batch_idx, len(testloader), test_loss_avg, 100.*float(correct)/total, correct, total)
+        logging(message)
         TestLoss.append(test_loss_avg) 
     return TestLoss
 
@@ -126,7 +128,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
         TestConvergence=[]
 
         # model 
-        model_to_save='./checkpoint/{}-{}-param_{}_{}-Mon_{}-ckpt.pth'.format(dataset,model_name,params[0],params[1],Monte_iter)
+        model_to_save='./checkpoint/{}-{}-param_{}_{}-Mon_{}-ckpt_new.pth'.format(dataset,model_name,params[0],params[1],Monte_iter)
         logging('The model to save is {}'.format(model_to_save))
         if dataset=='MNIST':
             if resume and os.path.exists(model_to_save):
@@ -161,17 +163,23 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 TestConvergence.append(statistics.mean(test(testloader,net,criterion,use_cuda)))
             else:
                 break
-            if epoch%10==0 or epoch==Epochs-1:
+            if TestConvergence[epoch] < best_loss:
                 logging('Saving..')
                 state = {
                         'net': net.module if use_cuda else net,
                         'TrainConvergence': TrainConvergence,
                         'TestConvergence': TestConvergence,
-                        'epoch': epoch+1,
+                        'epoch': epoch,
                     }
                 if not os.path.isdir('checkpoint'):
                     os.mkdir('checkpoint')
                 torch.save(state, model_to_save)
+                best_loss = TestConvergence[epoch]
+                if not os.path.exists('./%s' %model_name):
+                    os.makedirs('./%s' %model_name)
+                torch.save(net.module.state_dict(), './%s/%s_%s_%s_pretrain.pth' %(model_name, dataset, model_name,Epochs))
+            else:
+                pass
                 
       ## save recurrence plots
             if epoch%20==0:
@@ -179,7 +187,6 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 for name,parameters in net.named_parameters():
                     if name=="fc.weight":
                         hiddenState=parameters.cpu().detach().numpy()
-                        logging(hiddenState)
                 rp = RecurrencePlot()
                 X_rp = rp.fit_transform(hiddenState)
                 plt.figure(figsize=(6, 6))
@@ -187,16 +194,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 plt.title('Recurrence Plot', fontsize=14)
                 plt.savefig("Results/RecurrencePlots/RecurrencePlots_{}_{}_BatchSize{}_ConCoeffi{}_epoch{}.png".format(dataset,model_name,                                                                                                          params[0],params[1],epoch),dpi=600)
 
-                        
-
-            if TestConvergence[epoch] < best_loss:
-                best_loss = TestConvergence[epoch]
-                if not os.path.exists('./%s' %model_name):
-                    os.makedirs('./%s' %model_name)
-                torch.save(net.module.state_dict(), './%s/%s_%s_%s_pretrain.pth' %(model_name, dataset, model_name,Epochs))
-            else:
-                pass
-    
+          
     
         FileName="{}-{}-param_{}_{}-monte_{}".format(dataset,model_name,params[0],params[1],Monte_iter)
         np.save(savepath+'TrainConvergence-'+FileName,TrainConvergence)
