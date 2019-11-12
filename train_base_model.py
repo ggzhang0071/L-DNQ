@@ -27,6 +27,7 @@ print_device_useage=False
 aresume=True
 return_output=False
 print_to_logging=True
+save_recurrence_plots=False
 
 def ResumeModel(model_to_save):
     # Load checkpoint.
@@ -52,6 +53,23 @@ def print_nvidia_useage():
     else:
         pass
     
+def save_recurrencePlots(net,save_recurrencePlots_file):
+    global save_recurrence_plots
+    if save_recurrence_plots:
+        for name,parameters in net.named_parameters():
+            if name=="fc.weight":
+                hiddenState=parameters.cpu().detach().numpy()
+                rp = RecurrencePlot()
+                X_rp = rp.fit_transform(hiddenState)
+                plt.figure(figsize=(6, 6))
+                plt.imshow(X_rp[0], cmap='binary', origin='lower')
+                plt.savefig(save_recurrencePlots_file,dpi=600)
+            else:
+                continue
+    else:
+        pass
+
+    
 # Training
 def train(trainloader,net,optimizer,criterion,use_cuda):
     net.train()
@@ -74,10 +92,9 @@ def train(trainloader,net,optimizer,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
         TrainLoss.append(train_loss/(batch_idx+1))
-        message="batch number:{},length of train loader:{}, Train Loss: {} | Accuracy rate:{}, correct {}, of total {})".format(batch_idx, len(trainloader),train_loss/(batch_idx+1), 100.*correct/total, correct, total)
+        message="Batch number:{}, Train Loss: {} | Accuracy rate:{})".format(batch_idx, round(train_loss/(batch_idx+1),3), round(100.*correct/total,3))
         print(message) 
 
-          
         del loss, predicted
 
     return TrainLoss,net
@@ -102,7 +119,7 @@ def test(testloader,net,criterion,use_cuda):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum().item()
         test_loss_avg=test_loss/(batch_idx+1)
-        message="batch number:{},length of train loader:{}, Train Loss: {} | Accuracy rate:{}, correct {}, of total {})".format(batch_idx, len(testloader), test_loss_avg, 100.*float(correct)/total, correct, total)
+        message="Batch number:{},Test Loss: {} | Accuracy rate:{}".format(batch_idx, round(test_loss_avg,3), round(100.*float(correct)/total,3))
         logging(message)
         TestLoss.append(test_loss_avg) 
     return TestLoss
@@ -129,7 +146,6 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
 
         # model 
         model_to_save='./checkpoint/{}-{}-param_{}_{}-Mon_{}-ckpt_new.pth'.format(dataset,model_name,params[0],params[1],Monte_iter)
-        logging('The model to save is {}'.format(model_to_save))
         if dataset=='MNIST':
             if resume and os.path.exists(model_to_save):
                 [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(model_to_save)
@@ -180,19 +196,14 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 torch.save(net.module.state_dict(), './%s/%s_%s_%s_pretrain.pth' %(model_name, dataset, model_name,Epochs))
             else:
                 pass
-                
-      ## save recurrence plots
-            if epoch%20==0:
-
-                for name,parameters in net.named_parameters():
-                    if name=="fc.weight":
-                        hiddenState=parameters.cpu().detach().numpy()
-                rp = RecurrencePlot()
-                X_rp = rp.fit_transform(hiddenState)
-                plt.figure(figsize=(6, 6))
-                plt.imshow(X_rp[0], cmap='binary', origin='lower')
-                plt.title('Recurrence Plot', fontsize=14)
-                plt.savefig("Results/RecurrencePlots/RecurrencePlots_{}_{}_BatchSize{}_ConCoeffi{}_epoch{}.png".format(dataset,model_name,                                                                                                          params[0],params[1],epoch),dpi=600)
+            ## save recurrence plots
+            if epoch%2==0:
+                save_recurrencePlots_file="Results/RecurrencePlots/RecurrencePlots_{}_{}_BatchSize{}_ConCoeffi{}_epoch{}.png".format(dataset,
+                                                                                                                                     model_name,params[0],params[1],epoch)
+                                   
+                save_recurrencePlots(net,save_recurrencePlots_file)
+                                                                                                              
+                                                                                                                                                
 
           
     
@@ -222,6 +233,8 @@ if __name__=="__main__":
     parser.add_argument('--resume', '-r', type=str,default=True, help='resume from checkpoint')
     parser.add_argument('--print_device_useage', type=str, default=False, help='Whether print gpu useage')
     parser.add_argument('--print_to_logging', type=str, default=True, help='Whether print')
+    parser.add_argument('--save_recurrencePlots', type=str, default=False, help='Whether print')
+
 
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
