@@ -162,7 +162,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 if start_epoch>=Epochs-1:
                     continue
             else:
-                net=getattr(resnet20_cifar,'Resnet20_CIFAR10')(params[1])
+                net=getattr(CIFAR10_resnet,'Resnet20_CIFAR10')(params[1])
 
         if use_cuda:
             net.cuda()
@@ -238,6 +238,7 @@ if __name__=="__main__":
 
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
+    print_to_logging=args.print_to_logging
     print_device_useage=args.print_device_useage
     resume=args.resume
     return_output=args.return_output
