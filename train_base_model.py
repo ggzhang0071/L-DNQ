@@ -15,19 +15,15 @@ import torchvision.transforms as transforms
 from pyts.image import RecurrencePlot
 import numpy as np
 import argparse
-import models_MNIST.resnet as MNIST_resnet
-import models_CIFAR10.resnet as CIFAR10_resnet
+from models_CIFAR10.resnet import  Resnet20_CIFAR10
+from models_MNIST.resnet import Resnet20_MNIST
 from torch.autograd import Variable
 #from utils.train import progress_bar
 import os,sys
 from ImageDataLoader import data_loading
 DataPath='/git/data'
 sys.path.append(DataPath)
-print_device_useage=False
-aresume=True
-return_output=False
-print_to_logging=True
-save_recurrence_plots=False
+
 
 def ResumeModel(model_to_save):
     # Load checkpoint.
@@ -46,6 +42,12 @@ def logging(message):
     else:
         pass
 
+    global print_device_useage
+    if print_device_useage:
+        os.system('echo check gpu;nvidia-smi;echo check done')
+    else:
+        pass
+
 def print_nvidia_useage():
     global print_device_useage
     if print_device_useage:
@@ -57,8 +59,8 @@ def save_recurrencePlots(net,save_recurrencePlots_file):
     global save_recurrence_plots
     if save_recurrence_plots:
         for name,parameters in net.named_parameters():
-            if name=="fc.weight":
-                hiddenState=parameters.cpu().detach().numpy()
+            hiddenState=parameters.cpu().detach().numpy()
+            if "fc" in name and hiddenState.ndim==2:
                 rp = RecurrencePlot()
                 X_rp = rp.fit_transform(hiddenState)
                 plt.figure(figsize=(6, 6))
@@ -145,7 +147,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
         TestConvergence=[]
 
         # model 
-        model_to_save='./checkpoint/{}-{}-param_{}_{}-Mon_{}-ckpt_new.pth'.format(dataset,model_name,params[0],params[1],Monte_iter)
+        model_to_save='./checkpoint/{}-{}-param_{}_{}-Mon_{}-ckpt.pth'.format(dataset,model_name,params[0],params[1],Monte_iter)
         if dataset=='MNIST':
             if resume and os.path.exists(model_to_save):
                 [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(model_to_save)
@@ -154,15 +156,15 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 
             
             else:
-                net=getattr(MNIST_resnet,'Resnet20_MNIST')(params[1])
+                net=Resnet20_MNIST(params[1])
                 
         elif dataset=='CIFAR10':
             if resume and os.path.exists(model_to_save):
                 [net,TrainConvergence,TestConvergence,start_epoch]=ResumeModel(model_to_save)
                 if start_epoch>=Epochs-1:
                     continue
-            else:
-                net=getattr(CIFAR10_resnet,'Resnet20_CIFAR10')(params[1])
+            else: 
+                net=Resnet20_CIFAR10(params[1])
 
         if use_cuda:
             net.cuda()
@@ -197,12 +199,12 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
             else:
                 pass
             ## save recurrence plots
-            if epoch%2==0:
+            if epoch%20==0 or epoch==Epochs-1:
                 save_recurrencePlots_file="Results/RecurrencePlots/RecurrencePlots_{}_{}_BatchSize{}_ConCoeffi{}_epoch{}.png".format(dataset,
                                                                                                                                      model_name,params[0],params[1],epoch)
                                    
                 save_recurrencePlots(net,save_recurrencePlots_file)
-          
+                                                                                                      
     
         FileName="{}-{}-param_{}_{}-monte_{}".format(dataset,model_name,params[0],params[1],Monte_iter)
         np.save(savepath+'TrainConvergence-'+FileName,TrainConvergence)
@@ -230,7 +232,7 @@ if __name__=="__main__":
     parser.add_argument('--resume', '-r', type=str,default=True, help='resume from checkpoint')
     parser.add_argument('--print_device_useage', type=str, default=False, help='Whether print gpu useage')
     parser.add_argument('--print_to_logging', type=str, default=True, help='Whether print')
-    parser.add_argument('--save_recurrencePlots', type=str, default=False, help='Whether print')
+    parser.add_argument('--save_recurrence_plots', type=str, default=False, help='Whether print')
 
 
     args = parser.parse_args()
@@ -239,6 +241,7 @@ if __name__=="__main__":
     print_device_useage=args.print_device_useage
     resume=args.resume
     return_output=args.return_output
+    save_recurrence_plots=args.save_recurrence_plots
     params=[args.BatchSize,args.ConCoeff]
 
     ResNet(args.dataset,params,args.Epochs,args.MonteSize,args.lr,args.savepath)
