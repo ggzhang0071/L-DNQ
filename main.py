@@ -10,7 +10,7 @@ from utils.dataset import get_dataloader
 from utils.train import cascade_soft_update, validate
 from utils.quantization import ADMM_quantization
 from models_MNIST.resnet import MnistResNet
-from models_CIFAR10.resnet import resnet20_cifar
+from models_CIFAR10.resnet import Resnet20_CIFAR10
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
@@ -19,7 +19,7 @@ from datetime import datetime
 import argparse
 from ImageDataLoader import data_loading
 import os,sys
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 DataPath='/git/data'
 sys.path.append(DataPath)
 
@@ -34,7 +34,7 @@ def QuantizedNet(dataset,model_name,batch_size,lr,kbits,require_first_test,quant
     # Initialize some folder for data saving
     folder_init(model_name, ['train_record', 'val_record', 'save_models', \
                              'trainable_names/LDNQ%s' %(exp_spec)])
-    pretrain_path = './%s/%s_%s_pretrain.pth' %(model_name,dataset, model_name)
+    pretrain_path = './%s/%s_%s_%s_pretrain.pth' %(model_name, dataset, model_name,1)
     quantized_path = './%s/%s_save_models/LDNQ%s.pth' %(model_name, dataset,exp_spec)
     hessian_root = './%s/hessian' %model_name
     kbits = args.kbits
@@ -43,9 +43,9 @@ def QuantizedNet(dataset,model_name,batch_size,lr,kbits,require_first_test,quant
     val_record = open('./%s/val_record/LDNQ%s.txt' %(model_name, exp_spec), 'w')
     init_lr = 0.001
     # --------------------------------------------------------------------
-    print ('You are going to quantize model %s into %d bits, using dataset %s, with specification name as %s' \
+    """print ('You are going to quantize model %s into %d bits, using dataset %s, with specification name as %s' \
            %(model_name, kbits, dataset, exp_spec))
-    input('Press any to continue. Ctrl+C to break.')
+    input('Press any to continue. Ctrl+C to break.')"""
     ################
     
     # Load Dataset #
@@ -77,12 +77,12 @@ def QuantizedNet(dataset,model_name,batch_size,lr,kbits,require_first_test,quant
         #original_net.load_state_dict(pretrain_param)
 
     elif dataset =='CIFAR10':   
-        quantized_net = resnet20_cifar()
+        quantized_net = Resnet20_CIFAR10(1)
         #quantized_net = resnet18() # For quantization of ResNet18 using ImageNet
         pretrain_param = torch.load(pretrain_path)
         quantized_net.load_state_dict(pretrain_param)
 
-        original_net = resnet20_cifar()
+        original_net = Resnet20_CIFAR10(1)
         #original_net = resnet18() # For quantization of ResNet18 using ImageNet
         original_net.load_state_dict(pretrain_param)
 
@@ -93,7 +93,7 @@ def QuantizedNet(dataset,model_name,batch_size,lr,kbits,require_first_test,quant
 
         original_net.cuda()
         original_net = torch.nn.DataParallel(original_net, device_ids=range(torch.cuda.device_count()))
-        cudnn.benchmark = True
+        cudnn.benchmark = False
 
     ####################
     # First Validation #
@@ -171,7 +171,7 @@ def QuantizedNet(dataset,model_name,batch_size,lr,kbits,require_first_test,quant
     val_record.close()
 
 if __name__=='__main__':
-    parser = argparse.ArgumentParser(description='L-DNQ')
+    parser = argparse.ArgumentParser(description='LDNQ')
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('--model_name', default='ResNet20', type=str, help='Name of model to be quantized')
     parser.add_argument('--dataset', default='CIFAR10', type=str, help='Name of dataset used')

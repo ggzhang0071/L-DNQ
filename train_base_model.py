@@ -134,10 +134,10 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
     """trainloader = get_dataloader(dataset, 'train', Batch_size)
         testloader = get_dataloader(dataset, 'test', 100)"""
         
-    trainloader = data_loading(DataPath,dataset,'train',Batch_size)
-    testloader = data_loading(DataPath,dataset,'test', 100)
-    
+
     for Monte_iter in range(MonteSize):
+        trainloader = data_loading(DataPath,dataset,'train',Batch_size)
+        testloader = data_loading(DataPath,dataset,'test', 100)
         # Data
         best_loss = float('inf')  # best test loss
         start_epoch = 0  # start from epoch 0 or last checkpoint epoch         
@@ -167,7 +167,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
         if use_cuda:
             net.cuda()
             net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-            cudnn.benchmark = True
+            cudnn.benchmark = False
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
@@ -193,7 +193,7 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                 best_loss = TestConvergence[epoch]
                 if not os.path.exists('./%s' %model_name):
                     os.makedirs('./%s' %model_name)
-                torch.save(net.module.state_dict(), './%s/%s_%s_%s_pretrain.pth' %(model_name, dataset, model_name,Epochs))
+                torch.save(net.module.state_dict(), './%s/%s_%s_%s_pretrain.pth' %(model_name, dataset, model_name,params[1]))
             else:
                 pass
             ## save recurrence plots
@@ -202,9 +202,6 @@ def ResNet(dataset,params,Epochs,MonteSize,lr,savepath):
                                                                                                                                      model_name,params[0],params[1],epoch)
                                    
                 save_recurrencePlots(net,save_recurrencePlots_file)
-                                                                                                              
-                                                                                                                                                
-
           
     
         FileName="{}-{}-param_{}_{}-monte_{}".format(dataset,model_name,params[0],params[1],Monte_iter)
